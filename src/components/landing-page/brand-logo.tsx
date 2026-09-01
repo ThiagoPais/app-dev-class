@@ -1,14 +1,11 @@
-import { Image } from 'expo-image';
 import { StyleSheet, View } from 'react-native';
+
+import { MapeeiLogo } from '@/shared/components/logo';
 
 export function BrandLogo() {
   return (
     <View accessibilityLabel="Mapeei" style={styles.container}>
-      <Image
-        contentFit="contain"
-        source={require('@/assets/images/landing/logo-mapeei.svg')}
-        style={styles.image}
-      />
+      <MapeeiLogo width={144} />
     </View>
   );
 }
@@ -19,9 +16,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingTop: 14,
-  },
-  image: {
-    width: 144,
-    height: 82,
   },
 });
