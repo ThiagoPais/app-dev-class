@@ -10,7 +10,7 @@ export default function AppTabs() {
       <LandingTabBar />
       <TabList style={styles.routeList}>
         <TabTrigger name="home" href="/home" />
-        <TabTrigger name="landing" href="/ladingPage" />
+        <TabTrigger name="landing" href="/landingPage" />
         <TabTrigger name="explore" href="/explore" />
       </TabList>
     </Tabs>
