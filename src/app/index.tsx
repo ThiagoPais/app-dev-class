@@ -8,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WebBadge } from '@/components/web-badge';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Link } from 'expo-router';
 
 function getDevMenuHint() {
   if (Platform.OS === 'web') {
@@ -40,7 +41,7 @@ export default function HomeScreen() {
         </ThemedView>
 
         <ThemedText type="code" style={styles.code}>
-          get started
+          <Link href="/ladingPage">Landing Page</Link>
         </ThemedText>
 
         <ThemedView type="backgroundElement" style={styles.stepContainer}>

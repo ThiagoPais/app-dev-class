@@ -1,32 +1,27 @@
-import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { useColorScheme } from 'react-native';
+import { TabList, TabSlot, TabTrigger, Tabs } from 'expo-router/ui';
+import { StyleSheet } from 'react-native';
 
-import { Colors } from '@/constants/theme';
+import { LandingTabBar } from '@/components/landing-page/landing-tab-bar';
 
 export default function AppTabs() {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
-
   return (
-    <NativeTabs
-      backgroundColor={colors.background}
-      indicatorColor={colors.backgroundElement}
-      labelStyle={{ selected: { color: colors.text } }}>
-      <NativeTabs.Trigger name="index">
-        <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/home.png')}
-          renderingMode="template"
-        />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="explore">
-        <NativeTabs.Trigger.Label>Explore</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/explore.png')}
-          renderingMode="template"
-        />
-      </NativeTabs.Trigger>
-    </NativeTabs>
+    <Tabs>
+      <TabSlot style={styles.slot} />
+      <LandingTabBar />
+      <TabList style={styles.routeList}>
+        <TabTrigger name="home" href="/" />
+        <TabTrigger name="landing" href="/ladingPage" />
+        <TabTrigger name="explore" href="/explore" />
+      </TabList>
+    </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  slot: {
+    height: '100%',
+  },
+  routeList: {
+    display: 'none',
+  },
+});
