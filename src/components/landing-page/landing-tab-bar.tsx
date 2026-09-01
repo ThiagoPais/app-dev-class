@@ -2,7 +2,8 @@ import { TabTrigger } from 'expo-router/ui';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { landingColors } from './colors';
+import { BrandColors } from '@/shared/constants/colors';
+
 import { LandingTabButton } from './landing-tab-button';
 import { LandingTabPlaceholder } from './landing-tab-placeholder';
 
@@ -55,7 +56,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     paddingHorizontal: 16,
     borderRadius: 29,
-    backgroundColor: landingColors.white,
+    backgroundColor: BrandColors.white,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,

@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { landingColors } from './colors';
+import { BrandColors } from '@/shared/constants/colors';
 
 type SectionHeadingProps = {
   subtitle: string;
@@ -22,7 +22,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   title: {
-    color: landingColors.ink,
+    color: BrandColors.textPrimary,
     fontSize: 29,
     fontWeight: '800',
     lineHeight: 32,
@@ -30,7 +30,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     marginTop: 1,
-    color: '#B2B2B2',
+    color: BrandColors.textMuted,
     fontSize: 12,
     lineHeight: 15,
   },

@@ -2,8 +2,6 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BodyCopy } from '@/components/landing-page/body-copy';
-import { BrandLogo } from '@/components/landing-page/brand-logo';
-import { landingColors } from '@/components/landing-page/colors';
 import { FeatureCard } from '@/components/landing-page/feature-card';
 import { GuideCard } from '@/components/landing-page/guide-card';
 import { EmphasizedCopy } from '@/components/landing-page/emphasized-copy';
@@ -12,6 +10,8 @@ import {
   type InformationTileProps,
 } from '@/components/landing-page/information-tile';
 import { SectionHeading } from '@/components/landing-page/section-heading';
+import { MapeeiLogo } from '@/shared/components/logo';
+import { BrandColors } from '@/shared/constants/colors';
 
 const informationTiles: InformationTileProps[] = [
   {
@@ -37,7 +37,7 @@ export default function LandingPage() {
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
       <View style={styles.screen}>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <BrandLogo />
+          <MapeeiLogo width={144} style={styles.logo} />
           <FeatureCard />
 
           <SectionHeading
@@ -83,18 +83,22 @@ export default function LandingPage() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: landingColors.background,
+    backgroundColor: BrandColors.background,
   },
   screen: {
     flex: 1,
     width: '100%',
     maxWidth: 430,
     alignSelf: 'center',
-    backgroundColor: landingColors.background,
+    backgroundColor: BrandColors.background,
   },
   content: {
     paddingHorizontal: 18,
     paddingBottom: 116,
+  },
+  logo: {
+    height: 146,
+    paddingTop: 14,
   },
   informationList: {
     gap: 14,
@@ -110,7 +114,7 @@ const styles = StyleSheet.create({
     marginTop: 19,
     marginBottom: 15,
     paddingHorizontal: 4,
-    color: landingColors.ink,
+    color: BrandColors.textPrimary,
     fontSize: 29,
     fontWeight: '800',
     lineHeight: 34,

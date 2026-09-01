@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { landingColors } from './colors';
+import { BrandColors } from '@/shared/constants/colors';
 
 export function GuideCard() {
   return (
@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
     left: 14,
     right: 14,
     bottom: 14,
-    color: landingColors.white,
+    color: BrandColors.white,
     fontSize: 14,
     fontWeight: '800',
   },

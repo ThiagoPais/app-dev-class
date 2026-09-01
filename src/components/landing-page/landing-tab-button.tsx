@@ -3,7 +3,7 @@ import { SymbolView } from 'expo-symbols';
 import type { ComponentProps } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 
-import { landingColors } from './colors';
+import { BrandColors } from '@/shared/constants/colors';
 
 type SymbolName = ComponentProps<typeof SymbolView>['name'];
 
@@ -30,7 +30,7 @@ export function LandingTabButton({
       <SymbolView
         name={icon}
         size={26}
-        tintColor={isFocused ? landingColors.pink : '#CDCDCD'}
+        tintColor={isFocused ? BrandColors.secondary : '#CDCDCD'}
       />
     </Pressable>
   );
@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
   },
   activeItem: {
     borderWidth: 2,
-    borderColor: landingColors.pink,
+    borderColor: BrandColors.secondary,
     backgroundColor: '#FFF4F7',
   },
   pressed: {

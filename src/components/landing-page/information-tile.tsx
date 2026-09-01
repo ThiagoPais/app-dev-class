@@ -2,7 +2,7 @@ import { SymbolView } from 'expo-symbols';
 import type { ComponentProps } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { landingColors } from './colors';
+import { BrandColors } from '@/shared/constants/colors';
 
 export type InformationTileProps = {
   icon: ComponentProps<typeof SymbolView>['name'];
@@ -12,7 +12,7 @@ export type InformationTileProps = {
 export function InformationTile({ icon, label }: InformationTileProps) {
   return (
     <View style={styles.tile}>
-      <SymbolView name={icon} size={45} tintColor={landingColors.white} />
+      <SymbolView name={icon} size={45} tintColor={BrandColors.white} />
       <Text style={styles.label}>{label}</Text>
     </View>
   );
@@ -26,7 +26,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     borderRadius: 27,
-    backgroundColor: landingColors.berry,
+    backgroundColor: BrandColors.primary,
     shadowColor: '#3E0923',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.26,
@@ -34,7 +34,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   label: {
-    color: landingColors.white,
+    color: BrandColors.white,
     fontSize: 13,
     fontWeight: '500',
   },

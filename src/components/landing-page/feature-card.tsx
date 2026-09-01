@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { landingColors } from './colors';
+import { BrandColors } from '@/shared/constants/colors';
 
 export function FeatureCard() {
   return (
@@ -50,7 +50,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 4,
     right: 16,
-    color: landingColors.pink,
+    color: BrandColors.secondary,
     fontSize: 73,
     lineHeight: 80,
     transform: [{ rotate: '-12deg' }],
@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 76,
     right: 8,
-    color: landingColors.yellow,
+    color: '#DCE72C',
     fontSize: 38,
     lineHeight: 43,
     transform: [{ rotate: '8deg' }],
@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 22,
     bottom: 31,
-    color: landingColors.white,
+    color: BrandColors.white,
     fontSize: 35,
     fontWeight: '800',
     lineHeight: 37,
@@ -90,6 +90,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.5)',
   },
   activeDot: {
-    backgroundColor: landingColors.white,
+    backgroundColor: BrandColors.white,
   },
 });
