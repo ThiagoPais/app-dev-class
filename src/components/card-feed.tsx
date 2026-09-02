@@ -1,6 +1,5 @@
 import { Image } from 'expo-image';
-import { CSSProperties } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 export type CardFeedProps = {
   /** Conteudo */
@@ -40,135 +39,126 @@ export function CardFeed({
   accentBackground = '#FCE4EF',
   borderColor = '#E0E1E6',
 }: CardFeedProps) {
-
   const badgeColor = active ? accentColor : InactiveColor;
   const badgeBackground = active ? accentBackground : InactiveBackground;
   const statusColor = active ? ActiveColor : InactiveColor;
   const statusLabel = active ? 'Ativa agora' : 'Inativa';
 
-  const contentCard: CSSProperties = {
-    alignSelf: 'stretch',
-    backgroundColor,
-    color: textColor,
-    padding: 16,
-    marginBottom: 16,
-    borderRadius: 8,
-  }
-
-  const cardHeader: CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginBottom: 8,
-  }
-
-  const titleStyle: CSSProperties = {
-    margin: 0,
-    fontSize: 16,
-    fontWeight: 600,
-  }
-
-  const badge: CSSProperties = {
-    flexShrink: 0,
-    fontSize: 13,
-    fontWeight: 600,
-    color: badgeColor,
-    backgroundColor: badgeBackground,
-    padding: '4px 10px',
-    borderRadius: 999,
-    whiteSpace: 'nowrap',
-  }
-
-  const descriptionStyle: CSSProperties = {
-    margin: 0,
-    marginBottom: 16,
-    fontSize: 16,
-    color: mutedColor,
-    borderBottom: `1px solid ${borderColor}`,
-    paddingBottom: 16,
-  }
-
-  const cardFooter: CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    fontSize: 14,
-    color: mutedColor,
-  }
-
-  const status: CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 6,
-  }
-
-  const statusDot: CSSProperties = {
-    width: 8,
-    height: 8,
-    borderRadius: 999,
-    backgroundColor: statusColor,
-    flexShrink: 0,
-  }
-
-  const metrics: CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 16,
-  }
-
-  const metric: CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 6,
-  }
-
   return (
-    <div style={contentCard}>
-      <div style={cardHeader}>
-        <p style={titleStyle}>{title}</p>
-        <div style={badge}>
-          {conversations} {conversations === 1 ? 'conversa' : 'conversas'}
-        </div>
-      </div>
+    <View style={[styles.contentCard, { backgroundColor }]}>
+      <View style={styles.cardHeader}>
+        <Text style={[styles.title, { color: textColor }]}>{title}</Text>
+        <View style={[styles.badge, { backgroundColor: badgeBackground }]}>
+          <Text style={[styles.badgeText, { color: badgeColor }]} numberOfLines={1}>
+            {conversations} {conversations === 1 ? 'conversa' : 'conversas'}
+          </Text>
+        </View>
+      </View>
 
-      <p style={descriptionStyle}>{description}</p>
+      <Text style={[styles.description, { color: mutedColor, borderBottomColor: borderColor }]}>
+        {description}
+      </Text>
 
-      <div style={cardFooter}>
-        <span style={status}>
-          <span style={statusDot} />
-          {statusLabel}
-          {lastActivity ? ` - ${lastActivity}` : ''}
-        </span>
+      <View style={styles.cardFooter}>
+        <View style={styles.status}>
+          <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+          <Text style={[styles.footerText, { color: mutedColor }]}>
+            {statusLabel}
+            {lastActivity ? ` - ${lastActivity}` : ''}
+          </Text>
+        </View>
 
-        <div style={metrics}>
-          <span style={metric}>
+        <View style={styles.metrics}>
+          <View style={styles.metric}>
             <Image
               source={require('@/icones/msg.svg')}
               style={styles.icon}
               tintColor={mutedColor}
               contentFit="contain"
             />
-            {messages}
-          </span>
+            <Text style={[styles.footerText, { color: mutedColor }]}>{messages}</Text>
+          </View>
 
-          <span style={metric}>
+          <View style={styles.metric}>
             <Image
               source={require('@/icones/like.svg')}
               style={styles.icon}
               tintColor={mutedColor}
               contentFit="contain"
             />
-            {likes}
-          </span>
-        </div>
-      </div>
-    </div>
+            <Text style={[styles.footerText, { color: mutedColor }]}>{likes}</Text>
+          </View>
+        </View>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  contentCard: {
+    alignSelf: 'stretch',
+    padding: 16,
+    marginBottom: 16,
+    borderRadius: 8,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 8,
+  },
+  title: {
+    flexShrink: 1,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  badge: {
+    flexShrink: 0,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+  },
+  badgeText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  description: {
+    marginBottom: 16,
+    fontSize: 16,
+    borderBottomWidth: 1,
+    paddingBottom: 16,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  footerText: {
+    fontSize: 14,
+  },
+  status: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    flexShrink: 0,
+  },
+  metrics: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  metric: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   icon: {
     width: 18,
     height: 18,

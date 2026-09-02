@@ -1,9 +1,9 @@
 import { Image } from 'expo-image';
-import type { CSSProperties } from 'react';
-import { StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CardFeed, type CardFeedProps } from '@/components/card-feed';
+import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -11,51 +11,35 @@ import { useTheme } from '@/hooks/use-theme';
 export default function HomeScreen() {
   const theme = useTheme();
 
-  const searchBar: CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    gap: Spacing.two,
-    alignSelf: 'stretch',
-    marginTop: Spacing.four,
-    padding: `${Spacing.two}px ${Spacing.three}px`,
-    borderRadius: 999,
-    backgroundColor: "#EEEEEE",
-    cursor: 'text',
-    marginBottom: Spacing.four,
-  };
-
-  const searchInput: CSSProperties = {
-    border: 'none',
-    outline: 'none',
-    background: 'transparent',
-    color: theme.text,
-    font: 'inherit',
-    fontSize: 16,
-    textAlign: 'left',
-    padding: 0,
-  };
-
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.content}>
-        <h1 style={heading}>Forum</h1>
-        <p style={subtitle}>converse com moradores das RAs</p>
+        <ThemedText type="subtitle">Forum</ThemedText>
+        <ThemedText themeColor="textSecondary">converse com moradores das RAs</ThemedText>
 
-        <label style={searchBar}>
+        <View style={styles.searchBar}>
           <Image
             source={require('@/icones/search.svg')}
             style={styles.icon}
             tintColor={theme.textSecondary}
             contentFit="contain"
           />
-          <input type="search" size={20} placeholder="Pesquisa Conversa..." style={searchInput} />
-        </label>
+          <TextInput
+            style={[styles.searchInput, { color: theme.text }]}
+            placeholder="Pesquisa Conversa..."
+            placeholderTextColor={theme.textSecondary}
+            returnKeyType="search"
+          />
+        </View>
 
-
-        {feeds.map((feed) => (
-          <CardFeed key={feed.id} {...feed} />
-        ))}
+        <ScrollView
+          style={styles.feed}
+          contentContainerStyle={styles.feedContent}
+          showsVerticalScrollIndicator={false}>
+          {feeds.map((feed) => (
+            <CardFeed key={feed.id} {...feed} />
+          ))}
+        </ScrollView>
       </SafeAreaView>
     </ThemedView>
   );
@@ -84,7 +68,7 @@ const feeds: (CardFeedProps & { id: number })[] = [
     active: false,
     lastActivity: '3 dias',
   },
-   {
+  {
     id: 3,
     title: 'Feira do Guara',
     description:
@@ -97,19 +81,38 @@ const feeds: (CardFeedProps & { id: number })[] = [
   },
 ];
 
-const heading = { margin: 0, fontSize: 32, lineHeight: 1 };
-const subtitle = { margin: 0, fontSize: 16, lineHeight: 1 };
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
   content: {
     flex: 1,
-    alignItems: 'flex-start',
     paddingHorizontal: Spacing.four,
     gap: Spacing.one,
     marginTop: Spacing.five,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    alignSelf: 'stretch',
+    marginTop: Spacing.four,
+    marginBottom: Spacing.four,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    borderRadius: 999,
+    backgroundColor: '#EEEEEE',
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    padding: 0,
+  },
+  feed: {
+    alignSelf: 'stretch',
+  },
+  feedContent: {
+    paddingBottom: Spacing.five,
   },
   icon: {
     width: 18,
