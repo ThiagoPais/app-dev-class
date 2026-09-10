@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { formatCpf, isValidCpf, sanitizeCpf } from '@/shared/utils/cpf';
 import { SignupFormErrors, SignupFormValues } from '../models/auth.types';
 
 export interface UseSignupFormOptions {
@@ -9,6 +10,7 @@ export function useSignupForm(options?: UseSignupFormOptions) {
   const [values, setValues] = useState<SignupFormValues>({
     name: '',
     email: '',
+    cpf: '',
     password: '',
     agreeToTerms: false,
   });
@@ -29,6 +31,13 @@ export function useSignupForm(options?: UseSignupFormOptions) {
       newErrors.email = 'Insira um e-mail válido.';
     }
 
+    const rawCpf = sanitizeCpf(values.cpf);
+    if (!rawCpf) {
+      newErrors.cpf = 'O CPF é obrigatório.';
+    } else if (!isValidCpf(rawCpf)) {
+      newErrors.cpf = 'Insira um CPF válido.';
+    }
+
     if (!values.password) {
       newErrors.password = 'A senha é obrigatória.';
     } else if (values.password.length < 6) {
@@ -47,9 +56,20 @@ export function useSignupForm(options?: UseSignupFormOptions) {
     field: K,
     value: SignupFormValues[K]
   ) => {
-    setValues((prev) => ({ ...prev, [field]: value }));
+    // Apply CPF mask in real-time
+    if (field === 'cpf' && typeof value === 'string') {
+      const masked = formatCpf(value);
+      setValues((prev) => ({ ...prev, cpf: masked }));
+    } else {
+      setValues((prev) => ({ ...prev, [field]: value }));
+    }
+
     if (errors[field as keyof SignupFormErrors]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
+    // Clear general error on any field change
+    if (errors.general) {
+      setErrors((prev) => ({ ...prev, general: undefined }));
     }
   };
 
@@ -62,9 +82,10 @@ export function useSignupForm(options?: UseSignupFormOptions) {
         await options.onSubmit(values);
       }
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erro ao efetuar cadastro. Tente novamente.';
       setErrors((prev) => ({
         ...prev,
-        email: 'Erro ao efetuar cadastro. Tente novamente.',
+        general: message,
       }));
     } finally {
       setIsSubmitting(false);

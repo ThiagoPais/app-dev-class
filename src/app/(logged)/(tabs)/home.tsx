@@ -1,7 +1,9 @@
 import * as Device from 'expo-device';
 import { Link } from 'expo-router';
-import { Platform, StyleSheet } from 'react-native';
+import { Platform, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { useAuth } from '@/domains/auth';
 
 import { AnimatedIcon } from '@/components/animated-icon';
 import { HintRow } from '@/components/hint-row';
@@ -30,19 +32,32 @@ function getDevMenuHint() {
 }
 
 export default function HomeScreen() {
+  const { user, logout } = useAuth();
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ThemedView style={styles.heroSection}>
           <AnimatedIcon />
           <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
+            {user ? `Olá, ${user.fullName}!` : 'Welcome to Expo'}
           </ThemedText>
+          {user ? (
+            <ThemedText style={styles.userSubtitle}>
+              {user.email} • CPF: {user.cpf}
+            </ThemedText>
+          ) : null}
         </ThemedView>
 
         <ThemedText type="code" style={styles.code}>
-          <Link href="/ladingPage">Landing Page</Link>
+          <Link href="/landingPage">Landing Page</Link>
         </ThemedText>
+
+        <Pressable
+          style={styles.logoutButton}
+          onPress={logout}>
+          <ThemedText style={styles.logoutText}>Sair da conta</ThemedText>
+        </Pressable>
 
         <ThemedView type="backgroundElement" style={styles.stepContainer}>
           <HintRow
@@ -85,6 +100,22 @@ const styles = StyleSheet.create({
   },
   title: {
     textAlign: 'center',
+  },
+  userSubtitle: {
+    fontSize: 14,
+    opacity: 0.7,
+    textAlign: 'center',
+  },
+  logoutButton: {
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.four,
+    borderRadius: Spacing.two,
+    backgroundColor: '#FEE2E2',
+  },
+  logoutText: {
+    color: '#DC2626',
+    fontWeight: '600',
+    fontSize: 14,
   },
   code: {
     textTransform: 'uppercase',

@@ -2,12 +2,12 @@ import React from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
@@ -17,6 +17,7 @@ import { AppButton, AppCheckbox, AppTextInput, OrDivider } from '@/shared/compon
 import { BrandColors } from '@/shared/constants/colors';
 
 import { AuthFooterLink, SocialAuthButton } from '../components';
+import { useAuth } from '../hooks/use-auth';
 import { useSignupForm } from '../hooks';
 
 export interface SignupScreenProps {
@@ -28,10 +29,12 @@ export function SignupScreen({
   onNavigateToLogin,
   onSocialSignup,
 }: SignupScreenProps) {
+  const { signup } = useAuth();
+
   const { values, errors, isSubmitting, handleChange, handleSubmit } = useSignupForm({
     onSubmit: async (data) => {
-      // Handle signup submission logic
-      console.log('Signup submitted:', data);
+      await signup(data);
+      router.replace('/(logged)/(tabs)/home');
     },
   });
 
@@ -86,6 +89,16 @@ export function SignupScreen({
               />
 
               <AppTextInput
+                label="CPF"
+                placeholder="000.000.000-00"
+                keyboardType="numeric"
+                value={values.cpf}
+                error={errors.cpf}
+                onChangeText={(text) => handleChange('cpf', text)}
+                maxLength={14}
+              />
+
+              <AppTextInput
                 label="Senha"
                 placeholder="Digite uma senha"
                 isPassword
@@ -113,6 +126,10 @@ export function SignupScreen({
                 onPress={handleSubmit}
                 style={styles.submitButton}
               />
+
+              {errors.general ? (
+                <Text style={styles.generalError}>{errors.general}</Text>
+              ) : null}
             </View>
 
             {/* Or Divider */}
@@ -197,6 +214,12 @@ const styles = StyleSheet.create({
   submitButton: {
     marginTop: 12,
     marginBottom: 4,
+  },
+  generalError: {
+    fontSize: 13,
+    color: '#DC2626',
+    textAlign: 'center',
+    marginTop: 8,
   },
   divider: {
     marginVertical: 12,
