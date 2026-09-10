@@ -42,6 +42,10 @@ export function useLoginForm(options?: UseLoginFormOptions) {
     if (errors[field as keyof LoginFormErrors]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
+    // Clear general error on any field change
+    if (errors.general) {
+      setErrors((prev) => ({ ...prev, general: undefined }));
+    }
   };
 
   const handleSubmit = async () => {
@@ -53,9 +57,10 @@ export function useLoginForm(options?: UseLoginFormOptions) {
         await options.onSubmit(values);
       }
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erro ao efetuar login. Tente novamente.';
       setErrors((prev) => ({
         ...prev,
-        password: 'Erro ao efetuar login. Tente novamente.',
+        general: message,
       }));
     } finally {
       setIsSubmitting(false);

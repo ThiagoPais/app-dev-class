@@ -4,12 +4,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { HeaderBanner } from '@/shared/components/header-banner';
 import { MapeeiLogo } from '@/shared/components/logo';
@@ -17,6 +17,7 @@ import { AppButton, AppCheckbox, AppTextInput, OrDivider } from '@/shared/compon
 import { BrandColors } from '@/shared/constants/colors';
 
 import { AuthFooterLink, SocialAuthButton } from '../components';
+import { useAuth } from '../hooks/use-auth';
 import { useLoginForm } from '../hooks';
 
 export interface LoginScreenProps {
@@ -30,9 +31,12 @@ export function LoginScreen({
   onNavigateToForgotPassword,
   onSocialLogin,
 }: LoginScreenProps) {
+  const { login } = useAuth();
+
   const { values, errors, isSubmitting, handleChange, handleSubmit } = useLoginForm({
     onSubmit: async (data) => {
-      console.log('Login submitted:', data);
+      await login(data);
+      router.replace('/(logged)/(tabs)/home');
     },
   });
 
@@ -116,6 +120,10 @@ export function LoginScreen({
                 onPress={handleSubmit}
                 style={styles.submitButton}
               />
+
+              {errors.general ? (
+                <Text style={styles.generalError}>{errors.general}</Text>
+              ) : null}
             </View>
 
             <OrDivider text="Ou" style={styles.divider} />
@@ -210,6 +218,12 @@ const styles = StyleSheet.create({
   submitButton: {
     marginTop: 12,
     marginBottom: 4,
+  },
+  generalError: {
+    fontSize: 13,
+    color: '#DC2626',
+    textAlign: 'center',
+    marginTop: 8,
   },
   divider: {
     marginVertical: 12,
