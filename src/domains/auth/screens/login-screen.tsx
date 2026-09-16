@@ -36,7 +36,7 @@ export function LoginScreen({
   const { values, errors, isSubmitting, handleChange, handleSubmit } = useLoginForm({
     onSubmit: async (data) => {
       await login(data);
-      router.replace('/(logged)/(tabs)/home');
+      router.replace('/(logged)/(tabs)/landingPage');
     },
   });
 
@@ -79,9 +79,8 @@ export function LoginScreen({
 
             <View style={styles.formContainer}>
               <AppTextInput
-                label="E-mail"
-                placeholder="Digite seu e-mail"
-                keyboardType="email-address"
+                label="E-mail ou CPF"
+                placeholder="Digite seu e-mail ou CPF"
                 autoCapitalize="none"
                 value={values.email}
                 error={errors.email}
