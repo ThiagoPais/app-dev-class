@@ -36,7 +36,7 @@ export function LoginScreen({
   const { values, errors, isSubmitting, handleChange, handleSubmit } = useLoginForm({
     onSubmit: async (data) => {
       await login(data);
-      router.replace('/(logged)/(tabs)/home');
+      router.replace('/(logged)/(tabs)/landingPage');
     },
   });
 

@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  Pressable,
   StyleProp,
   StyleSheet,
   Text,

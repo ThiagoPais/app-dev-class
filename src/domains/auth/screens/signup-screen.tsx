@@ -34,7 +34,7 @@ export function SignupScreen({
   const { values, errors, isSubmitting, handleChange, handleSubmit } = useSignupForm({
     onSubmit: async (data) => {
       await signup(data);
-      router.replace('/(logged)/(tabs)/home');
+      router.replace('/(logged)/(tabs)/landingPage');
     },
   });
 

@@ -1,4 +1,5 @@
 import { Redirect } from 'expo-router';
+
 import { useAuth } from '@/domains/auth';
 
 export default function Index() {
@@ -8,9 +9,9 @@ export default function Index() {
     return null;
   }
 
-  if (user) {
-    return <Redirect href="/(logged)/(tabs)/home" />;
-  }
-
-  return <Redirect href="/(auth)/login" />;
+  return (
+    <Redirect
+      href={user ? '/(logged)/(tabs)/landingPage' : '/(auth)/login'}
+    />
+  );
 }
