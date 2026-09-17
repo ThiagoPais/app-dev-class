@@ -23,6 +23,8 @@ export interface AuthContextValue {
   signup: (values: SignupFormValues) => Promise<void>;
   /** Sign the current user out */
   logout: () => Promise<void>;
+  /** Reload the current profile from Firestore */
+  refreshUser: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
@@ -70,6 +72,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setFirebaseUser(null);
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    if (!firebaseUser) {
+      setUser(null);
+      return;
+    }
+
+    const profile = await getUserProfile(firebaseUser.uid);
+    setUser(profile);
+  }, [firebaseUser]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -78,8 +90,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       login,
       signup,
       logout,
+      refreshUser,
     }),
-    [user, firebaseUser, isLoading, login, signup, logout]
+    [user, firebaseUser, isLoading, login, signup, logout, refreshUser]
   );
 
   return (

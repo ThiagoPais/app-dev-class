@@ -11,6 +11,7 @@ export default function AppTabs() {
       <TabList style={styles.routeList}>
         <TabTrigger name="landing" href="/(logged)/(tabs)/landingPage" />
         <TabTrigger name="forum" href="/(logged)/(tabs)/forum" />
+        <TabTrigger name="profile" href="/(logged)/(tabs)/profile" />
       </TabList>
     </Tabs>
   );
