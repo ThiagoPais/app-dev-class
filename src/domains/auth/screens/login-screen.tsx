@@ -79,9 +79,8 @@ export function LoginScreen({
 
             <View style={styles.formContainer}>
               <AppTextInput
-                label="E-mail"
-                placeholder="Digite seu e-mail"
-                keyboardType="email-address"
+                label="E-mail ou CPF"
+                placeholder="Digite seu e-mail ou CPF"
                 autoCapitalize="none"
                 value={values.email}
                 error={errors.email}

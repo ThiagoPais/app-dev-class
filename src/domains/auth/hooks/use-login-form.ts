@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { isValidCpf } from '@/shared/utils/cpf';
 import { LoginFormErrors, LoginFormValues } from '../models/auth.types';
 
 export interface UseLoginFormOptions {
@@ -17,11 +18,20 @@ export function useLoginForm(options?: UseLoginFormOptions) {
 
   const validate = (): boolean => {
     const newErrors: LoginFormErrors = {};
+    const identifier = values.email.trim();
 
-    if (!values.email.trim()) {
-      newErrors.email = 'O e-mail é obrigatório.';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) {
-      newErrors.email = 'Insira um e-mail válido.';
+    if (!identifier) {
+      newErrors.email = 'O e-mail ou CPF é obrigatório.';
+    } else if (identifier.includes('@')) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier)) {
+        newErrors.email = 'Insira um e-mail válido.';
+      }
+    } else if (!/^\d+$/.test(identifier)) {
+      newErrors.email = 'Insira um e-mail ou CPF válido (somente números).';
+    } else if (identifier.length !== 11) {
+      newErrors.email = 'O CPF deve conter exatamente 11 dígitos.';
+    } else if (!isValidCpf(identifier)) {
+      newErrors.email = 'Insira um CPF válido.';
     }
 
     if (!values.password) {

@@ -157,3 +157,23 @@ export async function updateProviderLastUsed(
     { merge: true }
   );
 }
+
+/**
+ * Retrieves the email associated with a CPF from cpf_registry and users collection.
+ */
+export async function getEmailByCpf(cpf: string): Promise<string | null> {
+  const cpfRef = doc(db, 'cpf_registry', cpf);
+  const cpfSnap = await getDoc(cpfRef);
+
+  if (!cpfSnap.exists()) return null;
+
+  const userId = cpfSnap.data()?.userId;
+  if (!userId) return null;
+
+  const userRef = doc(db, 'users', userId);
+  const userSnap = await getDoc(userRef);
+
+  if (!userSnap.exists()) return null;
+
+  return (userSnap.data()?.email as string) ?? null;
+}
