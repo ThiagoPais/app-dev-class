@@ -20,6 +20,7 @@ export default function AppTabs() {
 const styles = StyleSheet.create({
   slot: {
     height: '100%',
+    backgroundColor: '#FEF9FA',
   },
   routeList: {
     display: 'none',

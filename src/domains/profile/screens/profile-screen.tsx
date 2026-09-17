@@ -107,11 +107,10 @@ export function ProfileScreen() {
   const fullName = user?.fullName ?? 'Usuário';
   const handle = user?.email ? `@${user.email.split('@')[0]}` : '';
 
-  const confirmLogout = useCallback(() => {
-    Alert.alert('Sair da conta?', 'Você precisará entrar novamente para acessar o Mapeei.', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Sair', style: 'destructive', onPress: logout },
-    ]);
+  const handleLogout = useCallback(() => {
+    logout().catch(() => {
+      Alert.alert('Não foi possível sair', 'Tente novamente em alguns instantes.');
+    });
   }, [logout]);
 
   return (
@@ -121,42 +120,45 @@ export function ProfileScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}>
         <View style={[styles.hero, { paddingTop: Math.max(top + 18, 48) }]}>
-          <Pressable
-            accessibilityHint="Abre a galeria para escolher uma nova foto"
-            accessibilityLabel="Alterar foto de perfil"
-            accessibilityRole="button"
-            disabled={isUploading}
-            onPress={pickAvatar}
-            style={({ pressed }) => [styles.avatar, pressed && styles.avatarPressed]}>
-            {user?.avatarUrl ? (
-              <Image
-                cachePolicy="none"
-                contentFit="cover"
-                source={{ uri: user.avatarUrl }}
-                style={StyleSheet.absoluteFill}
-              />
-            ) : (
-              <Text style={styles.initials}>{getInitials(fullName)}</Text>
-            )}
-            {isUploading ? (
-              <View style={styles.uploadOverlay}>
-                <ActivityIndicator color={BrandColors.white} />
-              </View>
-            ) : null}
-          </Pressable>
+          <View style={styles.avatarButton}>
+            <View style={styles.avatar}>
+              {user?.avatarUrl ? (
+                <Image
+                  cachePolicy="none"
+                  contentFit="cover"
+                  source={{ uri: user.avatarUrl }}
+                  style={StyleSheet.absoluteFill}
+                />
+              ) : (
+                <Text style={styles.initials}>{getInitials(fullName)}</Text>
+              )}
+              {isUploading ? (
+                <View style={styles.uploadOverlay}>
+                  <ActivityIndicator color={BrandColors.white} />
+                </View>
+              ) : null}
+            </View>
+            <Pressable
+              accessibilityHint="Abre a galeria para escolher uma nova foto"
+              accessibilityLabel="Alterar foto de perfil"
+              accessibilityRole="button"
+              disabled={isUploading}
+              hitSlop={6}
+              onPress={pickAvatar}
+              style={({ pressed }) => [styles.cameraBadge, pressed && styles.cameraPressed]}>
+              <Ionicons color={BrandColors.white} name="camera" size={14} />
+            </Pressable>
+          </View>
 
           <Text style={styles.name}>{fullName}</Text>
           <Text style={styles.handle}>{handle}</Text>
           <Pressable
             accessibilityRole="button"
-            disabled={isUploading}
-            onPress={pickAvatar}
+            onPress={() =>
+              Alert.alert('Editar perfil', 'A edição dos demais dados estará disponível em breve.')
+            }
             style={({ pressed }) => [styles.editButton, pressed && styles.editButtonPressed]}>
-            {isUploading ? (
-              <ActivityIndicator color={BrandColors.white} size="small" />
-            ) : (
-              <Text style={styles.editButtonText}>Editar perfil</Text>
-            )}
+            <Text style={styles.editButtonText}>Editar perfil</Text>
           </Pressable>
           {errorMessage ? <Text style={styles.uploadError}>{errorMessage}</Text> : null}
         </View>
@@ -180,7 +182,7 @@ export function ProfileScreen() {
           </Pressable>
 
           <MenuSection items={preferenceItems} label="Preferências" />
-          <MenuSection items={accountItems} label="Conta" onLogout={confirmLogout} />
+          <MenuSection items={accountItems} label="Conta" onLogout={handleLogout} />
         </View>
       </ScrollView>
     </View>
@@ -206,6 +208,10 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 74,
     borderBottomRightRadius: 28,
   },
+  avatarButton: {
+    width: 80,
+    height: 80,
+  },
   avatar: {
     width: 80,
     height: 80,
@@ -220,7 +226,20 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
-  avatarPressed: {
+  cameraBadge: {
+    position: 'absolute',
+    right: -4,
+    bottom: -2,
+    width: 27,
+    height: 27,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: BrandColors.white,
+    borderRadius: 14,
+    backgroundColor: BrandColors.primary,
+  },
+  cameraPressed: {
     opacity: 0.88,
   },
   initials: {
