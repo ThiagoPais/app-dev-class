@@ -1,16 +1,14 @@
 import { TabTrigger } from 'expo-router/ui';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BrandColors } from '@/shared/constants/colors';
 
-import { useAuth } from '@/domains/auth/hooks/use-auth';
 import { LandingTabButton } from './landing-tab-button';
 import { LandingTabPlaceholder } from './landing-tab-placeholder';
 
 export function LandingTabBar() {
   const { bottom } = useSafeAreaInsets();
-  const { logout } = useAuth();
 
   return (
     <View style={[styles.wrapper, { bottom: Math.max(bottom, 13) }]}>
@@ -31,12 +29,12 @@ export function LandingTabBar() {
             label="Mensagens"
           />
         </TabTrigger>
-        <Pressable onPress={logout}>
-          <LandingTabPlaceholder
+        <TabTrigger name="profile" asChild>
+          <LandingTabButton
             icon={{ ios: 'person.circle', android: 'account_circle', web: 'account_circle' }}
             label="Perfil"
           />
-        </Pressable>
+        </TabTrigger>
       </View>
     </View>
   );

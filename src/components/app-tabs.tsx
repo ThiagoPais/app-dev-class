@@ -11,6 +11,7 @@ export default function AppTabs() {
       <TabList style={styles.routeList}>
         <TabTrigger name="landing" href="/(logged)/(tabs)/landingPage" />
         <TabTrigger name="forum" href="/(logged)/(tabs)/forum" />
+        <TabTrigger name="profile" href="/(logged)/(tabs)/profile" />
       </TabList>
     </Tabs>
   );
@@ -19,6 +20,7 @@ export default function AppTabs() {
 const styles = StyleSheet.create({
   slot: {
     height: '100%',
+    backgroundColor: '#FEF9FA',
   },
   routeList: {
     display: 'none',
