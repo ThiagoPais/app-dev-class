@@ -1,14 +1,16 @@
 import { TabTrigger } from 'expo-router/ui';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BrandColors } from '@/shared/constants/colors';
 
+import { useAuth } from '@/domains/auth/hooks/use-auth';
 import { LandingTabButton } from './landing-tab-button';
 import { LandingTabPlaceholder } from './landing-tab-placeholder';
 
 export function LandingTabBar() {
   const { bottom } = useSafeAreaInsets();
+  const { logout } = useAuth();
 
   return (
     <View style={[styles.wrapper, { bottom: Math.max(bottom, 13) }]}>
@@ -19,20 +21,22 @@ export function LandingTabBar() {
             label="Início"
           />
         </TabTrigger>
-        <TabTrigger name="explore" asChild>
+        <LandingTabPlaceholder
+          icon={{ ios: 'magnifyingglass', android: 'search', web: 'search' }}
+          label="Buscar"
+        />
+        <TabTrigger name="forum" asChild>
           <LandingTabButton
-            icon={{ ios: 'magnifyingglass', android: 'search', web: 'search' }}
-            label="Buscar"
+            icon={{ ios: 'bubble.left', android: 'chat_bubble_outline', web: 'chat_bubble_outline' }}
+            label="Mensagens"
           />
         </TabTrigger>
-        <LandingTabPlaceholder
-          icon={{ ios: 'bubble.left', android: 'chat_bubble_outline', web: 'chat_bubble_outline' }}
-          label="Mensagens"
-        />
-        <LandingTabPlaceholder
-          icon={{ ios: 'person.circle', android: 'account_circle', web: 'account_circle' }}
-          label="Perfil"
-        />
+        <Pressable onPress={logout}>
+          <LandingTabPlaceholder
+            icon={{ ios: 'person.circle', android: 'account_circle', web: 'account_circle' }}
+            label="Perfil"
+          />
+        </Pressable>
       </View>
     </View>
   );

@@ -9,9 +9,8 @@ export default function AppTabs() {
       <TabSlot style={styles.slot} />
       <LandingTabBar />
       <TabList style={styles.routeList}>
-        <TabTrigger name="landing" href="/landingPage" />
-        <TabTrigger name="explore" href="/explore" />
-        <TabTrigger name="home" href="/home" />
+        <TabTrigger name="landing" href="/(logged)/(tabs)/landingPage" />
+        <TabTrigger name="forum" href="/(logged)/(tabs)/forum" />
       </TabList>
     </Tabs>
   );
