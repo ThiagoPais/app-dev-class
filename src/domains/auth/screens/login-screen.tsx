@@ -18,7 +18,7 @@ import { BrandColors } from '@/shared/constants/colors';
 
 import { AuthFooterLink, SocialAuthButton } from '../components';
 import { useAuth } from '../hooks/use-auth';
-import { useLoginForm } from '../hooks';
+import { useGoogleSignIn, useLoginForm } from '../hooks';
 
 export interface LoginScreenProps {
   onNavigateToSignup?: () => void;
@@ -39,6 +39,12 @@ export function LoginScreen({
       router.replace('/(logged)/(tabs)/landingPage');
     },
   });
+
+  const {
+    signInWithGoogle,
+    isLoading: isGoogleLoading,
+    error: googleError,
+  } = useGoogleSignIn();
 
   const handleSignupNavigation = () => {
     if (onNavigateToSignup) {
@@ -137,8 +143,12 @@ export function LoginScreen({
               <SocialAuthButton
                 provider="google"
                 title="Inscreva-se com Google"
-                onPress={() => onSocialLogin?.('google')}
+                disabled={isGoogleLoading}
+                onPress={signInWithGoogle}
               />
+              {googleError ? (
+                <Text style={styles.generalError}>{googleError}</Text>
+              ) : null}
             </View>
 
             <AuthFooterLink

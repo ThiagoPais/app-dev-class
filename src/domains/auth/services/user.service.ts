@@ -16,6 +16,17 @@ export interface CreateUserDTO {
   email: string;
   fullName: string;
   cpf: string;
+  /** Sign-in method used to create the account. Defaults to 'password'. */
+  provider?: 'password' | 'google';
+  providerUid?: string | null;
+  avatarUrl?: string | null;
+}
+
+export interface LinkGoogleProviderDTO {
+  providerUid: string | null;
+  email: string;
+  /** Only written when set, so an existing avatar is not overwritten */
+  avatarUrl?: string | null;
 }
 
 /**
@@ -66,41 +77,39 @@ function mapDocToUserProfile(id: string, data: Record<string, unknown>): UserPro
  * Throws if the CPF is already registered.
  */
 export async function createUserWithCpf(dto: CreateUserDTO): Promise<UserProfile> {
-  const { uid, email, fullName, cpf } = dto;
+  const { uid, email, fullName, cpf, provider = 'password', providerUid = null, avatarUrl = null } = dto;
 
   const userRef = doc(db, 'users', uid);
   const cpfRef = doc(db, 'cpf_registry', cpf);
 
   const now = new Date();
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const linkedProvider = {
+    enabled: true,
+    linked: true,
+    providerUid,
+    email: normalizedEmail,
+    lastUsedAt: now,
+  };
+  const unlinkedProvider = {
+    enabled: false,
+    linked: false,
+    providerUid: null,
+    email: null,
+    lastUsedAt: null,
+  };
 
   const userData = {
-    email: email.trim().toLowerCase(),
+    email: normalizedEmail,
     cpf,
     fullName: fullName.trim(),
-    avatarUrl: null,
+    avatarUrl,
     phoneNumber: null,
     authProviders: {
-      password: {
-        enabled: true,
-        linked: true,
-        providerUid: null,
-        email: email.trim().toLowerCase(),
-        lastUsedAt: now,
-      },
-      google: {
-        enabled: false,
-        linked: false,
-        providerUid: null,
-        email: null,
-        lastUsedAt: null,
-      },
-      apple: {
-        enabled: false,
-        linked: false,
-        providerUid: null,
-        email: null,
-        lastUsedAt: null,
-      },
+      password: provider === 'password' ? linkedProvider : unlinkedProvider,
+      google: provider === 'google' ? linkedProvider : unlinkedProvider,
+      apple: unlinkedProvider,
     },
     isActive: true,
     termsAcceptedAt: now,
@@ -136,6 +145,36 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   if (!snap.exists()) return null;
 
   return mapDocToUserProfile(uid, snap.data());
+}
+
+/**
+ * Marks Google as a linked and enabled sign-in method for an existing profile
+ * and records its last use.
+ */
+export async function linkGoogleProvider(
+  uid: string,
+  dto: LinkGoogleProviderDTO
+): Promise<void> {
+  const { providerUid, email, avatarUrl } = dto;
+
+  const userRef = doc(db, 'users', uid);
+  await setDoc(
+    userRef,
+    {
+      authProviders: {
+        google: {
+          enabled: true,
+          linked: true,
+          providerUid,
+          email,
+          lastUsedAt: serverTimestamp(),
+        },
+      },
+      ...(avatarUrl ? { avatarUrl } : {}),
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
 }
 
 /**

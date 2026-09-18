@@ -10,10 +10,19 @@ import {
 import { auth } from '@/services/firebase';
 import { sanitizeCpf } from '@/shared/utils/cpf';
 
-import type { LoginFormValues, SignupFormValues, UserProfile } from '../models/auth.types';
+import type {
+  CompleteProfileFormValues,
+  GoogleAccount,
+  GoogleSignInResult,
+  LoginFormValues,
+  SignupFormValues,
+  UserProfile,
+} from '../models/auth.types';
+import { promptGoogleSignIn } from './google-sign-in';
 import {
   createUserWithCpf,
   getUserProfile,
+  linkGoogleProvider,
   updateProviderLastUsed,
 } from './user.service';
 
@@ -38,6 +47,16 @@ function mapAuthError(code: string): string {
       return 'Esta conta foi desativada.';
     case 'auth/network-request-failed':
       return 'Erro de conexão. Verifique sua internet.';
+    case 'auth/popup-blocked':
+      return 'O navegador bloqueou a janela do Google. Permita pop-ups e tente novamente.';
+    case 'auth/account-exists-with-different-credential':
+      return 'Este e-mail já está cadastrado com outro método de login. Entre com e-mail e senha.';
+    case 'auth/operation-not-allowed':
+      return 'Este método de login não está habilitado.';
+    case 'auth/unauthorized-domain':
+      return 'Este domínio não está autorizado para login com Google.';
+    case 'app/google-native-unavailable':
+      return 'O login com Google ainda não está disponível no celular. Use a versão web.';
     default:
       return 'Ocorreu um erro inesperado. Tente novamente.';
   }
@@ -129,6 +148,126 @@ export async function signIn(values: LoginFormValues): Promise<UserProfile> {
   await updateProviderLastUsed(userCredential.user.uid, 'password');
 
   return profile;
+}
+
+/**
+ * Google serves profile photos at 96px by default; request a larger version
+ * so the avatar stays sharp on high-density screens.
+ */
+function toLargeGooglePhoto(url: string | null): string | null {
+  if (!url) return null;
+  return url.replace(/=s\d+-c$/, '=s400-c');
+}
+
+/**
+ * Extracts the Google account details (name, e-mail, photo) from a Firebase user.
+ */
+export function getGoogleAccount(user: User): GoogleAccount {
+  const google = user.providerData.find((p) => p.providerId === 'google.com');
+
+  return {
+    providerUid: google?.uid ?? null,
+    email: (google?.email ?? user.email ?? '').trim().toLowerCase(),
+    fullName: google?.displayName ?? user.displayName ?? '',
+    avatarUrl: toLargeGooglePhoto(google?.photoURL ?? user.photoURL),
+  };
+}
+
+/**
+ * Signs in with Google. Existing profiles get the Google provider linked and,
+ * if they have no avatar yet, the Google photo. New users have no profile yet
+ * and must complete signup with their CPF.
+ */
+export async function signInWithGoogle(): Promise<GoogleSignInResult> {
+  let user: User;
+  try {
+    user = await promptGoogleSignIn();
+  } catch (error: unknown) {
+    const code = (error as { code?: string }).code ?? '';
+    if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+      return { status: 'cancelled' };
+    }
+    throw new Error(mapAuthError(code));
+  }
+
+  const profile = await getUserProfile(user.uid);
+
+  if (!profile) {
+    return { status: 'needs-profile' };
+  }
+
+  if (!profile.isActive) {
+    await firebaseSignOut(auth);
+    throw new Error('Esta conta foi desativada.');
+  }
+
+  const { google } = profile.authProviders;
+  if (google.linked && !google.enabled) {
+    await firebaseSignOut(auth);
+    throw new Error('Este método de login foi desativado nas configurações da sua conta.');
+  }
+
+  const account = getGoogleAccount(user);
+  const newAvatarUrl = profile.avatarUrl ? null : account.avatarUrl;
+
+  await linkGoogleProvider(user.uid, {
+    providerUid: account.providerUid,
+    email: account.email,
+    avatarUrl: newAvatarUrl,
+  });
+
+  return {
+    status: 'signed-in',
+    profile: {
+      ...profile,
+      avatarUrl: profile.avatarUrl ?? newAvatarUrl,
+      authProviders: {
+        ...profile.authProviders,
+        google: {
+          enabled: true,
+          linked: true,
+          providerUid: account.providerUid,
+          email: account.email,
+          lastUsedAt: new Date(),
+        },
+      },
+    },
+  };
+}
+
+/**
+ * Creates the Firestore profile for a user who signed in with Google but has
+ * no profile yet, reserving their CPF and saving the Google photo as avatar.
+ */
+export async function completeGoogleSignup(
+  values: CompleteProfileFormValues
+): Promise<UserProfile> {
+  const user = auth.currentUser;
+
+  if (!user) {
+    throw new Error('Sua sessão expirou. Entre com o Google novamente.');
+  }
+
+  const account = getGoogleAccount(user);
+
+  try {
+    return await createUserWithCpf({
+      uid: user.uid,
+      email: account.email,
+      fullName: values.name.trim(),
+      cpf: sanitizeCpf(values.cpf),
+      provider: 'google',
+      providerUid: account.providerUid,
+      avatarUrl: account.avatarUrl,
+    });
+  } catch (error: unknown) {
+    // Keep the Google session so the user can fix the CPF and try again
+    const message = error instanceof Error ? error.message : '';
+    if (message === 'CPF_ALREADY_REGISTERED') {
+      throw new Error('Este CPF já está cadastrado.');
+    }
+    throw new Error('Erro ao criar conta. Tente novamente.');
+  }
 }
 
 /**

@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { TabTrigger } from 'expo-router/ui';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,7 +11,7 @@ import { LandingTabPlaceholder } from './landing-tab-placeholder';
 
 export function LandingTabBar() {
   const { bottom } = useSafeAreaInsets();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
 
   return (
     <View style={[styles.wrapper, { bottom: Math.max(bottom, 13) }]}>
@@ -32,10 +33,16 @@ export function LandingTabBar() {
           />
         </TabTrigger>
         <Pressable onPress={logout}>
-          <LandingTabPlaceholder
-            icon={{ ios: 'person.circle', android: 'account_circle', web: 'account_circle' }}
-            label="Perfil"
-          />
+          {user?.avatarUrl ? (
+            <View accessibilityLabel="Perfil" style={styles.avatarItem}>
+              <Image source={{ uri: user.avatarUrl }} style={styles.avatar} contentFit="cover" />
+            </View>
+          ) : (
+            <LandingTabPlaceholder
+              icon={{ ios: 'person.circle', android: 'account_circle', web: 'account_circle' }}
+              label="Perfil"
+            />
+          )}
         </Pressable>
       </View>
     </View>
@@ -66,5 +73,16 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 10,
     elevation: 8,
+  },
+  avatarItem: {
+    width: 42,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
   },
 });
