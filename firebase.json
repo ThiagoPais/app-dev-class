@@ -1,0 +1,9 @@
+{
+  "firestore": [
+    {
+      "database": "app-db",
+      "rules": "firestore.rules",
+      "indexes": "firestore.indexes.json"
+    }
+  ]
+}
