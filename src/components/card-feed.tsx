@@ -8,6 +8,10 @@ export type CardFeedProps = {
   conversations: number;
   messages: number;
   likes: number;
+  /** Texto do selo; quando omitido, mostra a quantidade de conversas */
+  badgeLabel?: string;
+  /** Limita a descricao a N linhas (sem limite quando omitido) */
+  descriptionLines?: number;
   /** Estado: controla o ponto, o texto e as cores do selo */
   active?: boolean;
   lastActivity?: string;
@@ -30,6 +34,8 @@ export function CardFeed({
   conversations,
   messages,
   likes,
+  badgeLabel,
+  descriptionLines,
   active = false,
   lastActivity,
   backgroundColor = '#FFFFFF',
@@ -50,12 +56,14 @@ export function CardFeed({
         <Text style={[styles.title, { color: textColor }]}>{title}</Text>
         <View style={[styles.badge, { backgroundColor: badgeBackground }]}>
           <Text style={[styles.badgeText, { color: badgeColor }]} numberOfLines={1}>
-            {conversations} {conversations === 1 ? 'conversa' : 'conversas'}
+            {badgeLabel ?? `${conversations} ${conversations === 1 ? 'conversa' : 'conversas'}`}
           </Text>
         </View>
       </View>
 
-      <Text style={[styles.description, { color: mutedColor, borderBottomColor: borderColor }]}>
+      <Text
+        numberOfLines={descriptionLines}
+        style={[styles.description, { color: mutedColor, borderBottomColor: borderColor }]}>
         {description}
       </Text>
 

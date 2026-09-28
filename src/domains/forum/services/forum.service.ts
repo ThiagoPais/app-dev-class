@@ -45,7 +45,7 @@ function toDate(value: Timestamp | Date | null | undefined): Date {
   return new Date();
 }
 
-function normalizeCityName(city: string): string {
+export function normalizeCityName(city: string): string {
   return city
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
@@ -268,10 +268,14 @@ export async function softDeleteForumMessage(topicId: string, messageId: string)
   const messageRef = doc(db, TOPICS_COLLECTION, topicId, MESSAGES_SUBCOLLECTION, messageId);
   const topicRef = doc(db, TOPICS_COLLECTION, topicId);
 
-  const batch = writeBatch(db);
-  batch.update(messageRef, { is_deleted: true, updated_at: serverTimestamp() });
-  batch.update(topicRef, { replies_count: increment(-1) });
-  await batch.commit();
+  // Read first so deleting an already-deleted message does not decrement the counter twice
+  await runTransaction(db, async (transaction) => {
+    const messageSnap = await transaction.get(messageRef);
+    if (!messageSnap.exists() || messageSnap.data().is_deleted) return;
+
+    transaction.update(messageRef, { is_deleted: true, updated_at: serverTimestamp() });
+    transaction.update(topicRef, { replies_count: increment(-1) });
+  });
 }
 
 // ---------- Votes ----------
