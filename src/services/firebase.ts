@@ -13,6 +13,7 @@ import {
   getFirestore,
   type Firestore,
 } from 'firebase/firestore';
+import { getStorage, type FirebaseStorage } from 'firebase/storage';
 import { Platform } from 'react-native';
 
 const extra = Constants.expoConfig?.extra ?? {};
@@ -67,5 +68,6 @@ try {
 }
 
 const db: Firestore = getFirestore(app, firestoreDbName);
+const storage: FirebaseStorage = getStorage(app);
 
-export { app, auth, db };
+export { app, auth, db, storage };

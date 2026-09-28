@@ -3,8 +3,8 @@ import {
   signInWithEmailAndPassword as firebaseSignIn,
   signOut as firebaseSignOut,
   onAuthStateChanged,
-  type User,
   type Unsubscribe,
+  type User,
 } from 'firebase/auth';
 
 import { auth } from '@/services/firebase';
@@ -21,13 +21,14 @@ import type {
 import { promptGoogleSignIn } from './google-sign-in';
 import {
   createUserWithCpf,
+  getEmailByCpf,
   getUserProfile,
   linkGoogleProvider,
   updateProviderLastUsed,
 } from './user.service';
 
 /**
- * Maps Firebase Auth error codes to user-friendly Portuguese messages.
+ * Maps Firebase Auth error codes to user-friendly messages.
  */
 function mapAuthError(code: string): string {
   switch (code) {
@@ -113,13 +114,24 @@ export async function signUp(values: SignupFormValues): Promise<UserProfile> {
  * Verifies that the password provider is enabled in Firestore.
  */
 export async function signIn(values: LoginFormValues): Promise<UserProfile> {
-  const { email, password } = values;
+  const { email: identifier, password } = values;
+  const trimmed = identifier.trim();
+
+  let emailToAuth = trimmed.toLowerCase();
+
+  if (!trimmed.includes('@') && /^\d{11}$/.test(trimmed)) {
+    const foundEmail = await getEmailByCpf(trimmed);
+    if (!foundEmail) {
+      throw new Error('CPF não encontrado.');
+    }
+    emailToAuth = foundEmail.toLowerCase();
+  }
 
   let userCredential;
   try {
     userCredential = await firebaseSignIn(
       auth,
-      email.trim().toLowerCase(),
+      emailToAuth,
       password
     );
   } catch (error: unknown) {
