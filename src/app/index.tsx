@@ -1,3 +1,5 @@
+import { Redirect } from 'expo-router';
+
 import { useAuth } from '@/domains/auth';
 
 export default function Index() {
