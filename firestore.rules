@@ -1,0 +1,89 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // CPF Registry: Document ID is the 11-digit sanitized CPF.
+    // Guarantees platform-wide uniqueness at the database level.
+    match /cpf_registry/{cpf} {
+      // Any authenticated user can read to check existence
+      allow read: if isAuthenticated();
+
+      // Only allow creation if the document does NOT already exist
+      allow create: if isAuthenticated()
+        && request.resource.data.userId == request.auth.uid
+        && !exists(/databases/$(database)/documents/cpf_registry/$(cpf));
+
+      // CPF registry entries are immutable once written
+      allow update, delete: if false;
+    }
+
+    // Users Collection: Document ID is the Firebase Auth UID
+    match /users/{userId} {
+      // Users can read and write only their own profile document
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if false; // Soft-delete via isActive flag
+
+      // Subcollections (e.g. auth_providers audit)
+      match /{allSubcollections=**} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // Forum Topics & Subcollections
+    match /forum_topics/{topicId} {
+      allow read: if isAuthenticated() && (!resource.data.is_deleted || resource.data.author_id == request.auth.uid);
+      
+      allow create: if isAuthenticated()
+        && request.resource.data.author_id == request.auth.uid
+        && request.resource.data.upvotes_count == 0
+        && request.resource.data.downvotes_count == 0
+        && request.resource.data.replies_count == 0
+        && request.resource.data.is_locked == false
+        && request.resource.data.is_deleted == false;
+        
+      allow update: if isAuthenticated() && (
+        (isOwner(resource.data.author_id) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'content', 'updated_at', 'is_deleted']))
+        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['upvotes_count', 'downvotes_count', 'net_votes', 'replies_count', 'last_reply_at'])
+      );
+      
+      allow delete: if false;
+
+      match /votes/{userId} {
+        allow read: if isAuthenticated();
+        allow write: if isOwner(userId);
+      }
+
+      match /messages/{messageId} {
+        allow read: if isAuthenticated();
+        
+        allow create: if isAuthenticated()
+          && request.resource.data.author_id == request.auth.uid
+          && get(/databases/$(database)/documents/forum_topics/$(topicId)).data.is_locked == false;
+          
+        allow update: if isAuthenticated() && (
+          (isOwner(resource.data.author_id) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'updated_at', 'is_deleted']))
+          || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['upvotes_count', 'downvotes_count', 'net_votes'])
+        );
+        
+        allow delete: if false;
+
+        match /votes/{userId} {
+          allow read: if isAuthenticated();
+          allow write: if isOwner(userId);
+        }
+      }
+    }
+  }
+}
