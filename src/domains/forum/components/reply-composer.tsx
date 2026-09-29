@@ -35,9 +35,12 @@ function ReplyComposerForm({
     if (!canSend) return;
 
     setIsSending(true);
-    const ok = await onSubmit(text.trim());
-    setIsSending(false);
-    if (ok) setText('');
+    try {
+      const ok = await onSubmit(text.trim());
+      if (ok) setText('');
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
@@ -46,13 +49,14 @@ function ReplyComposerForm({
         <View style={styles.editBanner}>
           <Ionicons color={BrandColors.primary} name="create-outline" size={14} />
           <Text style={styles.editText}>Editando sua resposta</Text>
-          <Pressable accessibilityRole="button" hitSlop={8} onPress={onCancelEdit}>
+          <Pressable accessibilityRole="button" disabled={isSending} hitSlop={8} onPress={onCancelEdit}>
             <Text style={styles.cancel}>Cancelar</Text>
           </Pressable>
         </View>
       ) : null}
       <View style={styles.row}>
         <TextInput
+          editable={!isSending}
           maxLength={MAX_LENGTH}
           multiline
           onChangeText={setText}

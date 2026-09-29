@@ -20,7 +20,11 @@ mock.module('react-native', () => ({
   Text: ({ children }) => createElement('span', null, children),
   TextInput: (props) => {
     inputProps = props;
-    return createElement('textarea', { value: props.value, readOnly: true });
+    return createElement('textarea', {
+      value: props.value,
+      readOnly: props.editable === false,
+      onChange: (event) => props.onChangeText(event.target.value),
+    });
   },
   Pressable: ({ children, onPress, disabled }) => createElement('button', { onClick: onPress, disabled }, children),
   ActivityIndicator: () => createElement('span', null, 'loading'),
@@ -32,15 +36,22 @@ mock.module('../src/domains/auth/index.ts', () => ({ useAuth: () => ({ user: { i
 
 const feedPage = mock();
 const messagePage = mock();
+const baseTopic = { id: 'topic', isDeleted: false, repliesCount: 0, upvotesCount: 0, downvotesCount: 0, netVotes: 0 };
+const getTopic = mock(async () => ({ ...baseTopic }));
+const topicVote = mock(async () => null);
+const messageVote = mock(async () => null);
+const createMessage = mock();
+const castTopicVote = mock();
+const castMessageVote = mock();
 mock.module('../src/domains/forum/services/forum.service.ts', () => ({
   getTopicFeedPage: feedPage,
   listTopicMessages: messagePage,
-  getForumTopic: async () => ({ id: 'topic', isDeleted: false }),
-  getUserTopicVote: async () => null,
-  getUserMessageVote: async () => null,
-  castMessageVote: async () => {},
-  castTopicVote: async () => {},
-  createForumMessage: async () => {},
+  getForumTopic: getTopic,
+  getUserTopicVote: topicVote,
+  getUserMessageVote: messageVote,
+  castMessageVote,
+  castTopicVote,
+  createForumMessage: createMessage,
   softDeleteForumMessage: async () => {},
   softDeleteForumTopic: async () => {},
   updateForumMessage: async () => {},
@@ -67,11 +78,27 @@ afterEach(async () => {
   root = null;
   feedPage.mockReset();
   messagePage.mockReset();
+  getTopic.mockReset();
+  getTopic.mockImplementation(async () => ({ ...baseTopic }));
+  topicVote.mockReset();
+  topicVote.mockResolvedValue(null);
+  messageVote.mockReset();
+  messageVote.mockResolvedValue(null);
+  createMessage.mockReset();
+  castTopicVote.mockReset();
+  castMessageVote.mockReset();
   platform.OS = 'web';
 });
 const settle = async (ms = 10) => act(async () => new Promise((resolve) => setTimeout(resolve, ms)));
 const reply = (id) => ({ id, createdAt: new Date(0) });
 const page = (items, cursor = null, hasMore = false) => ({ items, cursor, hasMore });
+
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((onResolve, onReject) => { resolve = onResolve; reject = onReject; });
+  return { promise, resolve, reject };
+}
 
 // Render the real component and retain its React state between target changes.
 test('switching between equal replies resets the draft and submits to the new target', async () => {
@@ -181,4 +208,127 @@ test('retry after a failed refresh restarts the feed even when no later page exi
   await act(async () => feed.retry());
   expect(feedPage.mock.calls[2][3]).toBeNull();
   expect(feed.topics.map((item) => item.id)).toEqual(['fresh']);
+});
+
+for (const success of [true, false]) {
+  test(`reply submission locks editing and cancellation, then ${success ? 'clears' : 'preserves'} the draft`, async () => {
+    const submission = deferred();
+    const cancel = mock();
+    const submit = mock(() => submission.promise);
+    await render(createElement(ReplyComposer, {
+      editingMessageId: 'a', editingContent: 'Original', bottomInset: 0,
+      onCancelEdit: cancel, onSubmit: submit,
+    }));
+    await act(async () => inputProps.onChangeText('Edited reply'));
+    await act(async () => container.querySelectorAll('button')[1].click());
+    expect(container.querySelector('textarea').readOnly).toBe(true);
+    await act(async () => { for (const button of container.querySelectorAll('button')) button.click(); });
+    expect(cancel).not.toHaveBeenCalled();
+    expect(submit.mock.calls).toEqual([['Edited reply']]);
+    await act(async () => submission.resolve(success));
+    expect(container.querySelector('textarea').readOnly).toBe(false);
+    expect(inputProps.value).toBe(success ? '' : 'Edited reply');
+  });
+}
+
+test('refresh waits for a sent reply and uses the server count without duplicates', async () => {
+  messagePage.mockResolvedValueOnce(page([]));
+  let detail;
+  function Screen() { detail = useTopicDetail('topic'); return null; }
+  await render(createElement(Screen));
+  const write = deferred();
+  createMessage.mockReturnValueOnce(write.promise);
+  let sending;
+  let refreshing;
+  await act(async () => { sending = detail.sendMessage('New reply'); });
+  await act(async () => { refreshing = detail.refresh(); });
+  expect(detail.isRefreshing).toBe(true);
+  expect(getTopic).toHaveBeenCalledTimes(1);
+  const message = reply('new');
+  getTopic.mockResolvedValue({ ...baseTopic, repliesCount: 1 });
+  messagePage.mockResolvedValueOnce(page([message]));
+  await act(async () => { write.resolve(message); await sending; await refreshing; });
+  expect(detail.messages.map((item) => item.id)).toEqual(['new']);
+  expect(detail.topic.repliesCount).toBe(1);
+  expect(detail.isRefreshing).toBe(false);
+});
+
+test('a reply sent during an in-flight refresh survives its stale snapshot', async () => {
+  messagePage.mockResolvedValueOnce(page([]));
+  let detail;
+  function Screen() { detail = useTopicDetail('topic'); return null; }
+  await render(createElement(Screen));
+  const staleRead = deferred();
+  messagePage.mockReturnValueOnce(staleRead.promise);
+  let refreshing;
+  await act(async () => { refreshing = detail.refresh(); });
+  const message = reply('new');
+  createMessage.mockResolvedValueOnce(message);
+  await act(async () => detail.sendMessage('New reply'));
+  getTopic.mockResolvedValue({ ...baseTopic, repliesCount: 1 });
+  messagePage.mockResolvedValueOnce(page([message]));
+  await act(async () => { staleRead.resolve(page([])); await refreshing; });
+  expect(detail.messages.map((item) => item.id)).toEqual(['new']);
+  expect(detail.topic.repliesCount).toBe(1);
+});
+
+for (const target of ['topic', 'message']) {
+  for (const success of [true, false]) {
+    test(`${target} vote ${success ? 'success' : 'failure'} stays consistent across a pending refresh`, async () => {
+      const original = { ...reply('a'), upvotesCount: 0, downvotesCount: 0, netVotes: 0 };
+      messagePage.mockResolvedValue(page([original]));
+      let detail;
+      function Screen() { detail = useTopicDetail('topic'); return null; }
+      await render(createElement(Screen));
+      const write = deferred();
+      const cast = target === 'topic' ? castTopicVote : castMessageVote;
+      cast.mockReturnValueOnce(write.promise);
+      let voting;
+      let refreshing;
+      await act(async () => {
+        voting = (target === 'topic' ? detail.voteTopic('up') : detail.voteMessage('a', 'up'))
+          .catch((error) => error);
+      });
+      await act(async () => { refreshing = detail.refresh(); });
+      expect(target === 'topic' ? detail.topicVote : detail.messageVotes.a).toBe('up');
+      expect(getTopic).toHaveBeenCalledTimes(1);
+      if (success) {
+        if (target === 'topic') {
+          getTopic.mockResolvedValue({ ...baseTopic, upvotesCount: 1, netVotes: 1 });
+          topicVote.mockResolvedValue('up');
+        } else {
+          messagePage.mockResolvedValue(page([{ ...original, upvotesCount: 1, netVotes: 1 }]));
+          messageVote.mockResolvedValue('up');
+        }
+      }
+      await act(async () => {
+        if (success) write.resolve();
+        else write.reject(new Error('offline'));
+        await voting;
+        await refreshing;
+      });
+      expect(target === 'topic' ? detail.topicVote : detail.messageVotes.a).toBe(success ? 'up' : null);
+      expect(target === 'topic' ? detail.topic.netVotes : detail.messages[0].netVotes).toBe(success ? 1 : 0);
+      expect(detail.isRefreshing).toBe(false);
+    });
+  }
+}
+
+test('a vote started during refresh invalidates the stale topic and vote reads', async () => {
+  messagePage.mockResolvedValueOnce(page([]));
+  let detail;
+  function Screen() { detail = useTopicDetail('topic'); return null; }
+  await render(createElement(Screen));
+  const staleRead = deferred();
+  messagePage.mockReturnValueOnce(staleRead.promise);
+  let refreshing;
+  await act(async () => { refreshing = detail.refresh(); });
+  castTopicVote.mockResolvedValueOnce();
+  await act(async () => detail.voteTopic('up'));
+  getTopic.mockResolvedValue({ ...baseTopic, upvotesCount: 1, netVotes: 1 });
+  topicVote.mockResolvedValue('up');
+  messagePage.mockResolvedValueOnce(page([]));
+  await act(async () => { staleRead.resolve(page([])); await refreshing; });
+  expect(detail.topicVote).toBe('up');
+  expect(detail.topic.netVotes).toBe(1);
 });
