@@ -1,86 +1,115 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import { FORUM_REGION } from '../constants/regions';
 import type { ForumTopic } from '../models/forumTypes';
-import { listCityTopics, listRegionTopics, normalizeCityName } from '../services/forum.service';
+import { getTopicFeedPage, type ForumCursor } from '../services/forum.service';
 
-const LOAD_ERROR = 'Não foi possível carregar os tópicos. Puxe para atualizar.';
+const LOAD_ERROR = 'Não foi possível carregar os tópicos. Tente novamente.';
 
-/**
- * Every topic belongs to the DF region, so the "all RAs" feed reuses the region
- * index (ordered by last reply) and moves pinned topics to the top here.
- */
 function pinnedFirst(topics: ForumTopic[]): ForumTopic[] {
   return [...topics].sort((a, b) => Number(b.isPinned) - Number(a.isPinned));
 }
 
-/**
- * Loads the forum feed (all RAs, or a single one when `city` is set) and keeps it
- * fresh every time the screen regains focus, e.g. after creating a topic.
- */
 export function useTopicFeed(city: string | null) {
   const [topics, setTopics] = useState<ForumTopic[]>([]);
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const requestId = useRef(0);
+  const pending = useRef(false);
+  const failedMode = useRef<'focus' | 'refresh' | 'more'>('focus');
+  const nextPage = useRef({ cursor: null as ForumCursor, hasMore: false, scope: '' });
+  const scope = JSON.stringify([city, search]);
 
   const load = useCallback(
-    async (mode: 'focus' | 'refresh') => {
+    async (mode: 'focus' | 'refresh' | 'more') => {
+      if (mode === 'more' && (
+        pending.current || !nextPage.current.hasMore || nextPage.current.scope !== scope
+      )) return;
       const id = ++requestId.current;
-      if (mode === 'refresh') setIsRefreshing(true);
+      const isActive = () => id === requestId.current;
+      pending.current = true;
+      setErrorMessage(null);
+      setIsLoadingMore(mode === 'more');
+      setIsRefreshing(mode === 'refresh');
+      if (mode === 'focus') {
+        setIsLoading(true);
+        setTopics([]);
+        setHasMore(false);
+      }
 
       try {
-        const result = city
-          ? await listCityTopics(normalizeCityName(city))
-          : pinnedFirst(await listRegionTopics(FORUM_REGION, 30));
-        if (id !== requestId.current) return;
-        setTopics(result);
-        setErrorMessage(null);
+        const page = await getTopicFeedPage(
+          FORUM_REGION, city, search,
+          mode === 'more' ? nextPage.current.cursor : null, isActive
+        );
+        if (!isActive()) return;
+        nextPage.current = { cursor: page.cursor, hasMore: page.hasMore, scope };
+        setTopics((current) => {
+          const combined = mode === 'more' ? [...current, ...page.items] : page.items;
+          return pinnedFirst([...new Map(combined.map((topic) => [topic.id, topic])).values()]);
+        });
+        setHasMore(page.hasMore);
       } catch (error) {
-        // Firestore puts the link to create a missing index in this message
         console.warn('[forum] Failed to load forum feed:', error);
-        if (id !== requestId.current) return;
-        setErrorMessage(LOAD_ERROR);
+        if (isActive()) {
+          failedMode.current = mode;
+          setErrorMessage(LOAD_ERROR);
+        }
       } finally {
-        if (id === requestId.current) {
+        if (isActive()) {
+          pending.current = false;
           setIsLoading(false);
           setIsRefreshing(false);
+          setIsLoadingMore(false);
         }
       }
     },
-    [city]
+    [city, search, scope]
   );
 
   useFocusEffect(
     useCallback(() => {
-      void load('focus');
-    }, [load])
+      // Changing the filter invalidates older requests before the debounce ends.
+      const timer = setTimeout(() => void load('focus'), search.trim() ? 300 : 0);
+      return () => {
+        clearTimeout(timer);
+        requestId.current += 1;
+        pending.current = false;
+      };
+    }, [load, search])
   );
 
+  const changeSearch = useCallback((value: string) => {
+    if (value === search) return;
+    requestId.current += 1;
+    pending.current = false;
+    setSearch(value);
+    setIsLoading(true);
+    setTopics([]);
+    setHasMore(false);
+  }, [search]);
+
   const refresh = useCallback(() => load('refresh'), [load]);
-
-  const filteredTopics = useMemo(() => {
-    const term = normalizeCityName(search);
-    if (!term) return topics;
-
-    return topics.filter((topic) =>
-      [topic.title, topic.content, topic.city].some((field) =>
-        normalizeCityName(field).includes(term)
-      )
-    );
-  }, [search, topics]);
+  const loadMore = useCallback(() => load('more'), [load]);
+  const retry = useCallback(() => load(failedMode.current), [load]);
 
   return {
-    topics: filteredTopics,
+    topics,
     hasTopics: topics.length > 0,
     search,
-    setSearch,
+    setSearch: changeSearch,
     isLoading,
     isRefreshing,
+    isLoadingMore,
+    hasMore,
     errorMessage,
     refresh,
+    loadMore,
+    retry,
   };
 }

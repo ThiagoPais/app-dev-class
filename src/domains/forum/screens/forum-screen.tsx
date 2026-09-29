@@ -21,6 +21,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { BrandColors } from '@/shared/constants/colors';
 
 import { CityChips } from '../components/city-chips';
+import { PaginationFooter } from '../components/pagination-footer';
 import { TopicCard } from '../components/topic-card';
 import { useTopicFeed } from '../hooks/use-topic-feed';
 
@@ -31,7 +32,7 @@ export function ForumScreen() {
   const theme = useTheme();
   const { bottom } = useSafeAreaInsets();
   const [city, setCity] = useState<string | null>(null);
-  const { topics, hasTopics, search, setSearch, isLoading, isRefreshing, errorMessage, refresh } =
+  const { topics, hasTopics, search, setSearch, isLoading, isRefreshing, isLoadingMore, hasMore, errorMessage, refresh, loadMore, retry } =
     useTopicFeed(city);
 
   const tabBarOffset = Math.max(bottom, 13) + TAB_BAR_SPACE;
@@ -43,7 +44,7 @@ export function ForumScreen() {
     if (errorMessage) {
       return <EmptyState icon="cloud-offline-outline" message={errorMessage} />;
     }
-    if (hasTopics) {
+    if (search.trim()) {
       return <EmptyState icon="search-outline" message="Nenhum tópico encontrado para essa busca." />;
     }
     return (
@@ -96,6 +97,12 @@ export function ForumScreen() {
           keyboardShouldPersistTaps="handled"
           keyExtractor={(topic) => topic.id}
           ListEmptyComponent={renderEmpty}
+          ListFooterComponent={hasTopics ? (
+            <PaginationFooter isLoading={isLoadingMore} hasMore={hasMore}
+              errorMessage={errorMessage} onLoadMore={errorMessage ? retry : loadMore} />
+          ) : null}
+          onEndReached={errorMessage ? undefined : loadMore}
+          onEndReachedThreshold={0.4}
           refreshControl={
             <RefreshControl
               colors={[BrandColors.primary]}

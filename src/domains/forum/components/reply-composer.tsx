@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { BrandColors } from '@/shared/constants/colors';
@@ -7,6 +7,7 @@ import { BrandColors } from '@/shared/constants/colors';
 const MAX_LENGTH = 1000;
 
 interface ReplyComposerProps {
+  editingMessageId: string | null;
   /** When set, the composer edits this text instead of writing a new reply. */
   editingContent: string | null;
   onCancelEdit: () => void;
@@ -14,19 +15,19 @@ interface ReplyComposerProps {
   bottomInset: number;
 }
 
-export function ReplyComposer({
+export function ReplyComposer(props: ReplyComposerProps) {
+  return <ReplyComposerForm key={props.editingMessageId ?? 'new'} {...props} />;
+}
+
+function ReplyComposerForm({
   editingContent,
   onCancelEdit,
   onSubmit,
   bottomInset,
 }: ReplyComposerProps) {
-  const [text, setText] = useState('');
+  const [text, setText] = useState(editingContent ?? '');
   const [isSending, setIsSending] = useState(false);
   const isEditing = editingContent !== null;
-
-  useEffect(() => {
-    setText(editingContent ?? '');
-  }, [editingContent]);
 
   const canSend = text.trim().length > 0 && !isSending;
 

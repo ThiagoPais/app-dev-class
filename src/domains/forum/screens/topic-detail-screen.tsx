@@ -19,6 +19,7 @@ import { confirmAction, showAlert } from '@/shared/utils/dialogs';
 import { AuthorAvatar } from '../components/author-avatar';
 import { ForumHeader, goBackToForum, HeaderIconButton } from '../components/forum-header';
 import { MessageItem } from '../components/message-item';
+import { PaginationFooter } from '../components/pagination-footer';
 import { ReplyComposer } from '../components/reply-composer';
 import { VoteControl } from '../components/vote-control';
 import { useTopicDetail } from '../hooks/use-topic-detail';
@@ -126,7 +127,8 @@ export function TopicDetailScreen({ topicId }: { topicId: string }) {
           ) : (
             <>
               <Ionicons color={BrandColors.textMuted} name="alert-circle-outline" size={36} />
-              <Text style={styles.centeredText}>{detail.errorMessage}</Text>
+              <PaginationFooter isLoading={false} hasMore={false}
+                errorMessage={detail.errorMessage} onLoadMore={detail.retry} />
             </>
           )}
         </View>
@@ -190,6 +192,12 @@ export function TopicDetailScreen({ topicId }: { topicId: string }) {
             <Text style={styles.noReplies}>Ninguém respondeu ainda. Seja o primeiro!</Text>
           }
           ListHeaderComponent={topicHeader}
+          ListFooterComponent={
+            <PaginationFooter isLoading={detail.isLoadingMore} hasMore={detail.hasMore}
+              errorMessage={detail.errorMessage} onLoadMore={detail.errorMessage ? detail.retry : detail.loadMore} />
+          }
+          onEndReached={detail.errorMessage ? undefined : detail.loadMore}
+          onEndReachedThreshold={0.4}
           refreshControl={
             <RefreshControl
               colors={[BrandColors.primary]}
@@ -219,7 +227,9 @@ export function TopicDetailScreen({ topicId }: { topicId: string }) {
           </View>
         ) : (
           <ReplyComposer
+            key={topicId}
             bottomInset={bottom}
+            editingMessageId={editingMessage?.id ?? null}
             editingContent={editingMessage?.content ?? null}
             onCancelEdit={() => setEditingMessageId(null)}
             onSubmit={handleSubmitReply}
@@ -247,11 +257,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     paddingHorizontal: 32,
-  },
-  centeredText: {
-    color: BrandColors.textSecondary,
-    fontSize: 15,
-    textAlign: 'center',
   },
   listContent: {
     paddingHorizontal: 16,
