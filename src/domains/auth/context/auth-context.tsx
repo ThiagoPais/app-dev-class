@@ -1,9 +1,17 @@
 import React, { createContext, useCallback, useEffect, useMemo, useState } from 'react';
 import type { User } from 'firebase/auth';
 
-import type { LoginFormValues, SignupFormValues, UserProfile } from '../models/auth.types';
+import type {
+  CompleteProfileFormValues,
+  GoogleSignInResult,
+  LoginFormValues,
+  SignupFormValues,
+  UserProfile,
+} from '../models/auth.types';
 import {
+  completeGoogleSignup,
   signIn,
+  signInWithGoogle,
   signUp,
   signOutUser,
   subscribeToAuthState,
@@ -21,6 +29,10 @@ export interface AuthContextValue {
   login: (values: LoginFormValues) => Promise<void>;
   /** Create a new account with email, password, and CPF */
   signup: (values: SignupFormValues) => Promise<void>;
+  /** Sign in with Google; new users must then call completeGoogleSignup */
+  loginWithGoogle: () => Promise<GoogleSignInResult>;
+  /** Create the profile (name + CPF) for a user signed in with Google */
+  completeGoogleSignup: (values: CompleteProfileFormValues) => Promise<void>;
   /** Sign the current user out */
   logout: () => Promise<void>;
   /** Reload the current profile from Firestore */
@@ -66,6 +78,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(profile);
   }, []);
 
+  const loginWithGoogle = useCallback(async () => {
+    const result = await signInWithGoogle();
+    if (result.status === 'signed-in') {
+      setUser(result.profile);
+    }
+    return result;
+  }, []);
+
+  const completeGoogleSignupAction = useCallback(async (values: CompleteProfileFormValues) => {
+    const profile = await completeGoogleSignup(values);
+    setUser(profile);
+  }, []);
+
   const logout = useCallback(async () => {
     await signOutUser();
     setUser(null);
@@ -89,10 +114,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isLoading,
       login,
       signup,
+      loginWithGoogle,
+      completeGoogleSignup: completeGoogleSignupAction,
       logout,
       refreshUser,
     }),
-    [user, firebaseUser, isLoading, login, signup, logout, refreshUser]
+    [
+      user,
+      firebaseUser,
+      isLoading,
+      login,
+      signup,
+      loginWithGoogle,
+      completeGoogleSignupAction,
+      logout,
+      refreshUser,
+    ]
   );
 
   return (

@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -8,48 +9,58 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 
 import { HeaderBanner } from '@/shared/components/header-banner';
 import { MapeeiLogo } from '@/shared/components/logo';
-import { AppButton, AppCheckbox, AppTextInput, OrDivider } from '@/shared/components/ui';
+import { AppButton, AppCheckbox, AppTextInput } from '@/shared/components/ui';
 import { BrandColors } from '@/shared/constants/colors';
 
-import { AuthFooterLink, SocialAuthButton } from '../components';
+import { AuthFooterLink } from '../components';
 import { useAuth } from '../hooks/use-auth';
-import { useGoogleSignIn, useSignupForm } from '../hooks';
+import { useCompleteProfileForm } from '../hooks';
+import type { GoogleAccount } from '../models/auth.types';
+import { getGoogleAccount } from '../services/auth.service';
 
-export interface SignupScreenProps {
-  onNavigateToLogin?: () => void;
-  onSocialSignup?: (provider: 'apple' | 'google') => void;
+/**
+ * Shown after a first Google sign-in: the account has no Firestore profile yet,
+ * so the user confirms their name and provides the CPF to finish signing up.
+ */
+export function CompleteProfileScreen() {
+  const { firebaseUser, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={BrandColors.primary} />
+      </View>
+    );
+  }
+
+  if (!firebaseUser) {
+    return <Redirect href="/login" />;
+  }
+
+  return <CompleteProfileForm account={getGoogleAccount(firebaseUser)} />;
 }
 
-export function SignupScreen({
-  onNavigateToLogin,
-  onSocialSignup,
-}: SignupScreenProps) {
-  const { signup } = useAuth();
+function CompleteProfileForm({ account }: { account: GoogleAccount }) {
+  const { completeGoogleSignup, logout } = useAuth();
 
-  const { values, errors, isSubmitting, handleChange, handleSubmit } = useSignupForm({
+  const { values, errors, isSubmitting, handleChange, handleSubmit } = useCompleteProfileForm({
+    initialName: account.fullName,
     onSubmit: async (data) => {
-      await signup(data);
+      await completeGoogleSignup(data);
       router.replace('/(logged)/(tabs)/landingPage');
     },
   });
 
-  const {
-    signInWithGoogle,
-    isLoading: isGoogleLoading,
-    error: googleError,
-  } = useGoogleSignIn();
-
-  const handleLoginNavigation = () => {
-    if (onNavigateToLogin) {
-      onNavigateToLogin();
-    } else {
-      router.push('/login');
-    }
+  const handleUseAnotherAccount = async () => {
+    await logout();
+    router.replace('/login');
   };
 
   return (
@@ -63,18 +74,39 @@ export function SignupScreen({
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
-          {/* Top Banner */}
           <HeaderBanner />
 
-          {/* Main Card / Content */}
           <View style={styles.content}>
-            {/* Header Title */}
             <View style={styles.headerContainer}>
-              <Text style={styles.title}>Comece agora com o</Text>
-              <Text style={styles.title}>mapeei!</Text>
+              <Text style={styles.title}>Falta pouco!</Text>
+              <Text style={styles.subtitle}>
+                Confirme seus dados para concluir o cadastro.
+              </Text>
             </View>
 
-            {/* Form Fields */}
+            {/* Google Account */}
+            <View style={styles.accountCard}>
+              {account.avatarUrl ? (
+                <Image
+                  source={{ uri: account.avatarUrl }}
+                  style={styles.avatar}
+                  contentFit="cover"
+                  transition={150}
+                  accessibilityLabel="Foto da conta Google"
+                />
+              ) : (
+                <View style={[styles.avatar, styles.avatarFallback]}>
+                  <Ionicons name="person" size={28} color={BrandColors.textMuted} />
+                </View>
+              )}
+              <View style={styles.accountInfo}>
+                <Text style={styles.accountLabel}>Conectado com Google</Text>
+                <Text style={styles.accountEmail} numberOfLines={1}>
+                  {account.email}
+                </Text>
+              </View>
+            </View>
+
             <View style={styles.formContainer}>
               <AppTextInput
                 label="Nome"
@@ -82,16 +114,6 @@ export function SignupScreen({
                 value={values.name}
                 error={errors.name}
                 onChangeText={(text) => handleChange('name', text)}
-              />
-
-              <AppTextInput
-                label="E-mail"
-                placeholder="Digite seu e-mail"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                value={values.email}
-                error={errors.email}
-                onChangeText={(text) => handleChange('email', text)}
               />
 
               <AppTextInput
@@ -104,16 +126,6 @@ export function SignupScreen({
                 maxLength={14}
               />
 
-              <AppTextInput
-                label="Senha"
-                placeholder="Digite uma senha"
-                isPassword
-                value={values.password}
-                error={errors.password}
-                onChangeText={(text) => handleChange('password', text)}
-              />
-
-              {/* Terms Checkbox */}
               <AppCheckbox
                 label="Li e concordo com os termos de uso"
                 checked={values.agreeToTerms}
@@ -124,9 +136,8 @@ export function SignupScreen({
                 <Text style={styles.termsError}>{errors.agreeToTerms}</Text>
               ) : null}
 
-              {/* Submit Button */}
               <AppButton
-                title="Inscreva-se"
+                title="Concluir cadastro"
                 variant="primary"
                 loading={isSubmitting}
                 onPress={handleSubmit}
@@ -138,35 +149,12 @@ export function SignupScreen({
               ) : null}
             </View>
 
-            {/* Or Divider */}
-            <OrDivider text="Ou" style={styles.divider} />
-
-            {/* Social Buttons */}
-            <View style={styles.socialButtonsContainer}>
-              <SocialAuthButton
-                provider="apple"
-                title="Inscreva-se com Apple"
-                onPress={() => onSocialSignup?.('apple')}
-              />
-              <SocialAuthButton
-                provider="google"
-                title="Inscreva-se com Google"
-                disabled={isGoogleLoading}
-                onPress={signInWithGoogle}
-              />
-              {googleError ? (
-                <Text style={styles.generalError}>{googleError}</Text>
-              ) : null}
-            </View>
-
-            {/* Footer Navigation */}
             <AuthFooterLink
-              promptText="Já possui uma conta?"
-              actionText="Entre"
-              onPress={handleLoginNavigation}
+              promptText="Não é você?"
+              actionText="Usar outra conta"
+              onPress={handleUseAnotherAccount}
             />
 
-            {/* Logo Branding */}
             <View style={styles.logoContainer}>
               <MapeeiLogo />
             </View>
@@ -178,6 +166,12 @@ export function SignupScreen({
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: BrandColors.background,
+  },
   safeArea: {
     flex: 1,
     backgroundColor: BrandColors.background,
@@ -207,7 +201,46 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: BrandColors.textPrimary,
     letterSpacing: -0.5,
-    lineHeight: 34,
+    marginBottom: 6,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: BrandColors.textSecondary,
+    lineHeight: 20,
+  },
+  accountCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    marginBottom: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: BrandColors.inputBorder,
+    backgroundColor: BrandColors.inputBackground,
+  },
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+  },
+  avatarFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: BrandColors.divider,
+  },
+  accountInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  accountLabel: {
+    fontSize: 12,
+    color: BrandColors.textSecondary,
+    marginBottom: 2,
+  },
+  accountEmail: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: BrandColors.textPrimary,
   },
   formContainer: {
     width: '100%',
@@ -230,13 +263,6 @@ const styles = StyleSheet.create({
     color: '#DC2626',
     textAlign: 'center',
     marginTop: 8,
-  },
-  divider: {
-    marginVertical: 12,
-  },
-  socialButtonsContainer: {
-    width: '100%',
-    gap: 8,
   },
   logoContainer: {
     alignItems: 'center',

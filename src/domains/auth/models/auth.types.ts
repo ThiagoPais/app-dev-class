@@ -27,7 +27,32 @@ export interface SignupFormErrors {
   general?: string;
 }
 
+export interface CompleteProfileFormValues {
+  name: string;
+  cpf: string;
+  agreeToTerms: boolean;
+}
+
+export interface CompleteProfileFormErrors {
+  name?: string;
+  cpf?: string;
+  agreeToTerms?: string;
+  general?: string;
+}
+
 export type SocialAuthProvider = 'apple' | 'google';
+
+export interface GoogleAccount {
+  providerUid: string | null;
+  email: string;
+  fullName: string;
+  avatarUrl: string | null;
+}
+
+export type GoogleSignInResult =
+  | { status: 'signed-in'; profile: UserProfile }
+  | { status: 'needs-profile' }
+  | { status: 'cancelled' };
 
 export type AuthProviderType = 'password' | 'google.com' | 'apple.com';
 

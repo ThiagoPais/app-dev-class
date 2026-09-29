@@ -2,6 +2,7 @@ import { TabTrigger } from 'expo-router/ui';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useAuth } from '@/domains/auth';
 import { BrandColors } from '@/shared/constants/colors';
 
 import { LandingTabButton } from './landing-tab-button';
@@ -9,6 +10,7 @@ import { LandingTabPlaceholder } from './landing-tab-placeholder';
 
 export function LandingTabBar() {
   const { bottom } = useSafeAreaInsets();
+  const { user } = useAuth();
 
   return (
     <View style={[styles.wrapper, { bottom: Math.max(bottom, 13) }]}>
@@ -33,6 +35,7 @@ export function LandingTabBar() {
           <LandingTabButton
             icon={{ ios: 'person.circle', android: 'account_circle', web: 'account_circle' }}
             label="Perfil"
+            imageUri={user?.avatarUrl}
           />
         </TabTrigger>
       </View>
