@@ -1,0 +1,15 @@
+{
+  "functions": [{ "source": "functions", "codebase": "default" }],
+  "emulators": {
+    "firestore": { "port": 8080 },
+    "functions": { "port": 5001 },
+    "auth": { "port": 9099 }
+  },
+  "firestore": [
+    {
+      "database": "app-db",
+      "rules": "firestore.rules",
+      "indexes": "firestore.indexes.json"
+    }
+  ]
+}

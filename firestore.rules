@@ -1,0 +1,85 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function topicAvailable(topicId) {
+      return !get(/databases/$(database)/documents/forum_topics/$(topicId)).data.is_deleted;
+    }
+
+    match /cpf_registry/{cpf} {
+      // Signup checks uniqueness after Firebase Auth creates the account.
+      // CPF login verifies the password in a callable; it never exposes profiles.
+      allow get: if isAuthenticated();
+      allow list: if false;
+      allow create: if isAuthenticated()
+        && cpf.matches('^[0-9]{11}$')
+        && request.resource.data.userId == request.auth.uid
+        && !exists(/databases/$(database)/documents/cpf_registry/$(cpf));
+      allow update, delete: if false;
+    }
+
+    match /users/{userId} {
+      allow read, create, update: if isOwner(userId);
+      allow delete: if false;
+
+      match /{allSubcollections=**} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    match /forum_topics/{topicId} {
+      allow read: if isAuthenticated()
+        && (resource == null || !resource.data.is_deleted || isOwner(resource.data.author_id));
+
+      allow create: if isAuthenticated()
+        && request.resource.data.author_id == request.auth.uid
+        && request.resource.data.upvotes_count == 0
+        && request.resource.data.downvotes_count == 0
+        && request.resource.data.net_votes == 0
+        && request.resource.data.replies_count == 0
+        && request.resource.data.is_pinned == false
+        && request.resource.data.is_locked == false
+        && request.resource.data.is_deleted == false;
+
+      // Callable functions own counters, votes and activity timestamps.
+      allow update: if isOwner(resource.data.author_id)
+        && !resource.data.is_deleted
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['title', 'content', 'updated_at', 'is_deleted'])
+        && request.resource.data.updated_at == request.time
+        && request.resource.data.is_deleted is bool;
+      allow delete: if false;
+
+      match /votes/{userId} {
+        allow read: if isOwner(userId) && topicAvailable(topicId);
+        allow write: if false;
+      }
+
+      match /messages/{messageId} {
+        allow read: if isAuthenticated() && topicAvailable(topicId)
+          && (resource == null || !resource.data.is_deleted);
+        allow create, delete: if false;
+        allow update: if isOwner(resource.data.author_id)
+          && topicAvailable(topicId)
+          && !resource.data.is_deleted
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'updated_at'])
+          && request.resource.data.updated_at == request.time;
+
+        match /votes/{userId} {
+          allow read: if isOwner(userId)
+            && topicAvailable(topicId)
+            && !get(/databases/$(database)/documents/forum_topics/$(topicId)/messages/$(messageId)).data.is_deleted;
+          allow write: if false;
+        }
+      }
+    }
+  }
+}
