@@ -35,10 +35,20 @@ Install the app and backend dependencies, then run the regression suite against 
 ```bash
 FIRESTORE_DATABASE_ID=app-db AUTH_WEB_API_KEY=demo-key \
   bunx firebase-tools emulators:exec --only firestore,auth \
-  --project demo-app-dev-class-review 'npm test --prefix functions'
+  --project demo-app-dev-class-review 'npm test --prefix functions && bun run test:forum:emulator'
 ```
 
 The tests cover CPF login with a real emulated password check and custom-token session, private profiles, counter tampering, vote toggles, ownership, locked and deleted topics, and concurrent reply deletion. They refuse to run without emulator addresses and a `demo-` project.
+
+The forum pagination tests read through multiple pages of topics and replies, including tied timestamps and deleted documents. They also search older topics by title, content, or city. Search scans cursor pages until it finds matches or reaches the end. Sparse searches read more documents; canceled searches stop before requesting another page.
+
+Run the React component and hook tests without emulators:
+
+```bash
+bun run test:forum
+```
+
+These tests cover switching between replies with identical text, native Google button visibility, pagination retries, and stale requests after refresh or a search change.
 
 Run the app checks from the repository root:
 

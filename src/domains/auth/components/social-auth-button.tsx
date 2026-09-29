@@ -2,6 +2,7 @@ import React from 'react';
 import {
   Pressable,
   PressableProps,
+  Platform,
   StyleProp,
   StyleSheet,
   Text,
@@ -49,6 +50,8 @@ export function SocialAuthButton({
   disabled,
   ...rest
 }: SocialAuthButtonProps) {
+  if (provider === 'google' && Platform.OS !== 'web') return null;
+
   const isApple = provider === 'apple';
   const defaultTitle = isApple ? 'Inscreva-se com Apple' : 'Inscreva-se com Google';
 

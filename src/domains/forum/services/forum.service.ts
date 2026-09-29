@@ -8,9 +8,11 @@ import {
   orderBy,
   query,
   serverTimestamp,
+  startAfter,
   updateDoc,
   where,
   type QueryConstraint,
+  type QueryDocumentSnapshot,
   type Timestamp,
 } from 'firebase/firestore';
 
@@ -34,6 +36,33 @@ const TOPICS_COLLECTION = 'forum_topics';
 const MESSAGES_SUBCOLLECTION = 'messages';
 const VOTES_SUBCOLLECTION = 'votes';
 
+export type ForumCursor = QueryDocumentSnapshot | null;
+
+export interface ForumPage<T> {
+  items: T[];
+  cursor: ForumCursor;
+  hasMore: boolean;
+}
+
+async function readPage<T>(
+  path: string[],
+  constraints: QueryConstraint[],
+  pageSize: number,
+  cursor: ForumCursor,
+  map: (snapshot: QueryDocumentSnapshot) => T
+): Promise<ForumPage<T>> {
+  if (cursor) constraints.push(startAfter(cursor));
+  // The extra document tells the UI whether another page is available.
+  constraints.push(limit(pageSize + 1));
+  const [first, ...rest] = path;
+  const snaps = await getDocs(query(collection(db, first, ...rest), ...constraints));
+  const docs = snaps.docs.slice(0, pageSize);
+  return {
+    items: docs.map(map),
+    cursor: docs.at(-1) ?? cursor,
+    hasMore: snaps.size > pageSize,
+  };
+}
 
 function toDate(value: Timestamp | Date | null | undefined): Date {
   if (!value) return new Date();
@@ -42,7 +71,7 @@ function toDate(value: Timestamp | Date | null | undefined): Date {
   return new Date();
 }
 
-function normalizeCityName(city: string): string {
+export function normalizeCityName(city: string): string {
   return city
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
@@ -144,7 +173,12 @@ export async function getForumTopic(topicId: string): Promise<ForumTopic | null>
   return mapDocToForumTopic(snap.id, snap.data());
 }
 
-export async function listCityTopics(cityNormalized: string, sortBy: TopicFeedSort = 'recent', pageSize = 20): Promise<ForumTopic[]> {
+export async function listCityTopics(
+  cityNormalized: string,
+  sortBy: TopicFeedSort = 'recent',
+  pageSize = 20,
+  cursor: ForumCursor = null
+): Promise<ForumPage<ForumTopic>> {
   const constraints: QueryConstraint[] = [
     where('city_normalized', '==', cityNormalized),
     where('is_deleted', '==', false),
@@ -155,23 +189,51 @@ export async function listCityTopics(cityNormalized: string, sortBy: TopicFeedSo
   } else {
     constraints.push(orderBy('is_pinned', 'desc'), orderBy('last_reply_at', 'desc'));
   }
-  constraints.push(limit(pageSize));
-
-  const snaps = await getDocs(query(collection(db, TOPICS_COLLECTION), ...constraints));
-  return snaps.docs.map((d) => mapDocToForumTopic(d.id, d.data()));
+  return readPage([TOPICS_COLLECTION], constraints, pageSize, cursor,
+    (d) => mapDocToForumTopic(d.id, d.data()));
 }
 
-export async function listRegionTopics(region: string, pageSize = 20): Promise<ForumTopic[]> {
-  const snaps = await getDocs(
-    query(
-      collection(db, TOPICS_COLLECTION),
+export async function listRegionTopics(
+  region: string,
+  pageSize = 20,
+  cursor: ForumCursor = null
+): Promise<ForumPage<ForumTopic>> {
+  return readPage(
+    [TOPICS_COLLECTION],
+    [
       where('region', '==', region),
       where('is_deleted', '==', false),
       orderBy('last_reply_at', 'desc'),
-      limit(pageSize)
-    )
+    ],
+    pageSize,
+    cursor,
+    (d) => mapDocToForumTopic(d.id, d.data())
   );
-  return snaps.docs.map((d) => mapDocToForumTopic(d.id, d.data()));
+}
+
+/** Scan cursor pages until a match or the end, retaining only matching topics. */
+export async function getTopicFeedPage(
+  region: string,
+  city: string | null,
+  search: string,
+  cursor: ForumCursor = null,
+  isActive: () => boolean = () => true
+): Promise<ForumPage<ForumTopic>> {
+  const term = normalizeCityName(search);
+  while (isActive()) {
+    const page = city
+      ? await listCityTopics(normalizeCityName(city), 'recent', 20, cursor)
+      : await listRegionTopics(region, 30, cursor);
+    const items = term
+      ? page.items.filter((topic) =>
+          [topic.title, topic.content, topic.city].some((field) =>
+            normalizeCityName(field).includes(term)
+          ))
+      : page.items;
+    if (items.length || !page.hasMore) return { ...page, items };
+    cursor = page.cursor;
+  }
+  return { items: [], cursor, hasMore: false };
 }
 
 export async function listAuthorTopics(authorId: string, pageSize = 20): Promise<ForumTopic[]> {
@@ -223,16 +285,21 @@ export async function getForumMessage(topicId: string, messageId: string): Promi
   return mapDocToForumMessage(snap.id, topicId, snap.data());
 }
 
-export async function listTopicMessages(topicId: string, pageSize = 50): Promise<ForumMessage[]> {
-  const snaps = await getDocs(
-    query(
-      collection(db, TOPICS_COLLECTION, topicId, MESSAGES_SUBCOLLECTION),
+export async function listTopicMessages(
+  topicId: string,
+  pageSize = 50,
+  cursor: ForumCursor = null
+): Promise<ForumPage<ForumMessage>> {
+  return readPage(
+    [TOPICS_COLLECTION, topicId, MESSAGES_SUBCOLLECTION],
+    [
       where('is_deleted', '==', false),
       orderBy('created_at', 'asc'),
-      limit(pageSize)
-    )
+    ],
+    pageSize,
+    cursor,
+    (d) => mapDocToForumMessage(d.id, topicId, d.data())
   );
-  return snaps.docs.map((d) => mapDocToForumMessage(d.id, topicId, d.data()));
 }
 
 export async function updateForumMessage(topicId: string, messageId: string, updates: UpdateForumMessageDTO): Promise<void> {
