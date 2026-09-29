@@ -19,9 +19,9 @@ import type {
   UserProfile,
 } from '../models/auth.types';
 import { promptGoogleSignIn } from './google-sign-in';
+import { signInWithCpf } from './cpf-sign-in.service';
 import {
   createUserWithCpf,
-  getEmailByCpf,
   getUserProfile,
   linkGoogleProvider,
   updateProviderLastUsed,
@@ -41,12 +41,15 @@ function mapAuthError(code: string): string {
     case 'auth/user-not-found':
     case 'auth/wrong-password':
     case 'auth/invalid-credential':
-      return 'E-mail ou senha incorretos.';
+    case 'functions/unauthenticated':
+      return 'E-mail, CPF ou senha incorretos.';
     case 'auth/too-many-requests':
+    case 'functions/resource-exhausted':
       return 'Muitas tentativas. Tente novamente mais tarde.';
     case 'auth/user-disabled':
       return 'Esta conta foi desativada.';
     case 'auth/network-request-failed':
+    case 'functions/unavailable':
       return 'Erro de conexão. Verifique sua internet.';
     case 'auth/popup-blocked':
       return 'O navegador bloqueou a janela do Google. Permita pop-ups e tente novamente.';
@@ -117,23 +120,11 @@ export async function signIn(values: LoginFormValues): Promise<UserProfile> {
   const { email: identifier, password } = values;
   const trimmed = identifier.trim();
 
-  let emailToAuth = trimmed.toLowerCase();
-
-  if (!trimmed.includes('@') && /^\d{11}$/.test(trimmed)) {
-    const foundEmail = await getEmailByCpf(trimmed);
-    if (!foundEmail) {
-      throw new Error('CPF não encontrado.');
-    }
-    emailToAuth = foundEmail.toLowerCase();
-  }
-
   let userCredential;
   try {
-    userCredential = await firebaseSignIn(
-      auth,
-      emailToAuth,
-      password
-    );
+    userCredential = /^\d{11}$/.test(trimmed)
+      ? await signInWithCpf(trimmed, password)
+      : await firebaseSignIn(auth, trimmed.toLowerCase(), password);
   } catch (error: unknown) {
     const firebaseError = error as { code?: string };
     throw new Error(mapAuthError(firebaseError.code ?? ''));

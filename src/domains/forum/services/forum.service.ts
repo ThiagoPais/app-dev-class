@@ -4,22 +4,19 @@ import {
   doc,
   getDoc,
   getDocs,
-  increment,
   limit,
   orderBy,
   query,
-  runTransaction,
   serverTimestamp,
   updateDoc,
   where,
-  writeBatch,
-  type DocumentData,
-  type DocumentReference,
   type QueryConstraint,
   type Timestamp,
 } from 'firebase/firestore';
 
-import { db } from '@/services/firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+
+import { app, auth, db } from '@/services/firebase';
 
 import type {
   AuthorSnapshot,
@@ -207,36 +204,16 @@ export async function softDeleteForumTopic(topicId: string): Promise<void> {
 // ---------- Forum Messages ----------
 
 export async function createForumMessage(dto: CreateForumMessageDTO): Promise<ForumMessage> {
-  const now = new Date();
-
-  const messageData = {
-    topic_id: dto.topicId,
-    author_id: dto.authorId,
-    author_snapshot: toFirestoreAuthorSnapshot(dto.authorSnapshot),
-    content: dto.content.trim(),
-    upvotes_count: 0,
-    downvotes_count: 0,
-    net_votes: 0,
-    is_deleted: false,
-    created_at: serverTimestamp(),
-    updated_at: serverTimestamp(),
-  };
-
-  const messageRef = doc(collection(db, TOPICS_COLLECTION, dto.topicId, MESSAGES_SUBCOLLECTION));
-  const topicRef = doc(db, TOPICS_COLLECTION, dto.topicId);
-
-  const batch = writeBatch(db);
-  batch.set(messageRef, messageData);
-  batch.update(topicRef, {
-    replies_count: increment(1),
-    last_reply_at: serverTimestamp(),
-  });
-  await batch.commit();
-
-  return mapDocToForumMessage(messageRef.id, dto.topicId, {
-    ...messageData,
-    created_at: now,
-    updated_at: now,
+  if (dto.authorId !== auth.currentUser?.uid) throw new Error('Autor inválido.');
+  const createMessage = httpsCallable<
+    { topicId: string; content: string },
+    Record<string, unknown> & { id: string; created_at: number; updated_at: number }
+  >(getFunctions(app), 'createForumMessage');
+  const { data } = await createMessage({ topicId: dto.topicId, content: dto.content });
+  return mapDocToForumMessage(data.id, dto.topicId, {
+    ...data,
+    created_at: new Date(data.created_at),
+    updated_at: new Date(data.updated_at),
   });
 }
 
@@ -250,6 +227,7 @@ export async function listTopicMessages(topicId: string, pageSize = 50): Promise
   const snaps = await getDocs(
     query(
       collection(db, TOPICS_COLLECTION, topicId, MESSAGES_SUBCOLLECTION),
+      where('is_deleted', '==', false),
       orderBy('created_at', 'asc'),
       limit(pageSize)
     )
@@ -265,76 +243,17 @@ export async function updateForumMessage(topicId: string, messageId: string, upd
 }
 
 export async function softDeleteForumMessage(topicId: string, messageId: string): Promise<void> {
-  const messageRef = doc(db, TOPICS_COLLECTION, topicId, MESSAGES_SUBCOLLECTION, messageId);
-  const topicRef = doc(db, TOPICS_COLLECTION, topicId);
+  const deleteMessage = httpsCallable(getFunctions(app), 'deleteForumMessage');
+  await deleteMessage({ topicId, messageId });
 
-  // Read first so deleting an already-deleted message does not decrement the counter twice
-  await runTransaction(db, async (transaction) => {
-    const messageSnap = await transaction.get(messageRef);
-    if (!messageSnap.exists() || messageSnap.data().is_deleted) return;
-
-    transaction.update(messageRef, { is_deleted: true, updated_at: serverTimestamp() });
-    transaction.update(topicRef, { replies_count: increment(-1) });
-  });
 }
 
 // ---------- Votes ----------
 
-async function runVoteTransaction(itemRef: DocumentReference<DocumentData>, voteRef: DocumentReference<DocumentData>, voteType: VoteType): Promise<void> {
-  await runTransaction(db, async (transaction) => {
-    const voteSnap = await transaction.get(voteRef);
-
-    let upvotesDelta = 0;
-    let downvotesDelta = 0;
-    let netDelta = 0;
-
-    if (!voteSnap.exists()) {
-      transaction.set(voteRef, { vote_type: voteType, created_at: serverTimestamp() });
-      if (voteType === 'up') {
-        upvotesDelta = 1;
-        netDelta = 1;
-      } else {
-        downvotesDelta = 1;
-        netDelta = -1;
-      }
-    } else {
-      const existingType = voteSnap.data().vote_type as VoteType;
-
-      if (existingType === voteType) {
-        transaction.delete(voteRef);
-        if (voteType === 'up') {
-          upvotesDelta = -1;
-          netDelta = -1;
-        } else {
-          downvotesDelta = -1;
-          netDelta = 1;
-        }
-      } else {
-        transaction.update(voteRef, { vote_type: voteType, created_at: serverTimestamp() });
-        if (voteType === 'up') {
-          upvotesDelta = 1;
-          downvotesDelta = -1;
-          netDelta = 2;
-        } else {
-          upvotesDelta = -1;
-          downvotesDelta = 1;
-          netDelta = -2;
-        }
-      }
-    }
-
-    transaction.update(itemRef, {
-      upvotes_count: increment(upvotesDelta),
-      downvotes_count: increment(downvotesDelta),
-      net_votes: increment(netDelta),
-    });
-  });
-}
-
 export async function castTopicVote(topicId: string, userId: string, voteType: VoteType): Promise<void> {
-  const topicRef = doc(db, TOPICS_COLLECTION, topicId);
-  const voteRef = doc(db, TOPICS_COLLECTION, topicId, VOTES_SUBCOLLECTION, userId);
-  await runVoteTransaction(topicRef, voteRef, voteType);
+  if (userId !== auth.currentUser?.uid) throw new Error('Usuário inválido.');
+  const castVote = httpsCallable(getFunctions(app), 'castForumVote');
+  await castVote({ topicId, voteType });
 }
 
 export async function getUserTopicVote(topicId: string, userId: string): Promise<VoteType | null> {
@@ -344,9 +263,9 @@ export async function getUserTopicVote(topicId: string, userId: string): Promise
 }
 
 export async function castMessageVote(topicId: string, messageId: string, userId: string, voteType: VoteType): Promise<void> {
-  const messageRef = doc(db, TOPICS_COLLECTION, topicId, MESSAGES_SUBCOLLECTION, messageId);
-  const voteRef = doc(db, TOPICS_COLLECTION, topicId, MESSAGES_SUBCOLLECTION, messageId, VOTES_SUBCOLLECTION, userId);
-  await runVoteTransaction(messageRef, voteRef, voteType);
+  if (userId !== auth.currentUser?.uid) throw new Error('Usuário inválido.');
+  const castVote = httpsCallable(getFunctions(app), 'castForumVote');
+  await castVote({ topicId, messageId, voteType });
 }
 
 export async function getUserMessageVote(topicId: string, messageId: string, userId: string): Promise<VoteType | null> {

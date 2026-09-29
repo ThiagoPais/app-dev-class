@@ -4,6 +4,8 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 
 ## Get started
 
+CPF login and forum writes require the Firebase backend. See [backend setup](functions/README.md) for configuration, deployment, and emulator tests.
+
 1. Install dependencies
 
    ```bash
