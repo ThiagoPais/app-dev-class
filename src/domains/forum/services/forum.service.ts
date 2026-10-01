@@ -4,22 +4,28 @@ import {
   doc,
   getDoc,
   getDocs,
+  increment,
   limit,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
   startAfter,
   updateDoc,
   where,
+  type DocumentReference,
   type QueryConstraint,
   type QueryDocumentSnapshot,
   type Timestamp,
 } from 'firebase/firestore';
 
-import { getFunctions, httpsCallable } from 'firebase/functions';
+import { auth, db } from '@/services/firebase';
 
-import { app, auth, db } from '@/services/firebase';
-
+import {
+  DEFAULT_FORUM_CATEGORY,
+  isForumCategory,
+  type ForumCategory,
+} from '../constants/categories';
 import type {
   AuthorSnapshot,
   CreateForumMessageDTO,
@@ -103,6 +109,7 @@ function mapDocToForumTopic(id: string, data: Record<string, unknown>): ForumTop
     region: data.region as string,
     city: data.city as string,
     cityNormalized: data.city_normalized as string,
+    category: isForumCategory(data.category) ? data.category : DEFAULT_FORUM_CATEGORY,
     upvotesCount: (data.upvotes_count as number) ?? 0,
     downvotesCount: (data.downvotes_count as number) ?? 0,
     netVotes: (data.net_votes as number) ?? 0,
@@ -145,6 +152,7 @@ export async function createForumTopic(dto: CreateForumTopicDTO): Promise<ForumT
     region: dto.region,
     city: dto.city,
     city_normalized: normalizeCityName(dto.city),
+    category: dto.category,
     upvotes_count: 0,
     downvotes_count: 0,
     net_votes: 0,
@@ -211,11 +219,17 @@ export async function listRegionTopics(
   );
 }
 
+export interface TopicFeedFilters {
+  region: string;
+  city: string | null;
+  /** Filtered client-side so the RA forum reuses the existing city index. */
+  category: ForumCategory | null;
+  search: string;
+}
+
 /** Scan cursor pages until a match or the end, retaining only matching topics. */
 export async function getTopicFeedPage(
-  region: string,
-  city: string | null,
-  search: string,
+  { region, city, category, search }: TopicFeedFilters,
   cursor: ForumCursor = null,
   isActive: () => boolean = () => true
 ): Promise<ForumPage<ForumTopic>> {
@@ -224,12 +238,14 @@ export async function getTopicFeedPage(
     const page = city
       ? await listCityTopics(normalizeCityName(city), 'recent', 20, cursor)
       : await listRegionTopics(region, 30, cursor);
-    const items = term
-      ? page.items.filter((topic) =>
+    const items = page.items.filter(
+      (topic) =>
+        (!category || topic.category === category) &&
+        (!term ||
           [topic.title, topic.content, topic.city].some((field) =>
             normalizeCityName(field).includes(term)
           ))
-      : page.items;
+    );
     if (items.length || !page.hasMore) return { ...page, items };
     cursor = page.cursor;
   }
@@ -265,17 +281,50 @@ export async function softDeleteForumTopic(topicId: string): Promise<void> {
 
 // ---------- Forum Messages ----------
 
+/**
+ * Creates a reply and bumps the topic counters in one transaction. Firestore
+ * rules only accept the counter change together with the new reply.
+ */
 export async function createForumMessage(dto: CreateForumMessageDTO): Promise<ForumMessage> {
   if (dto.authorId !== auth.currentUser?.uid) throw new Error('Autor inválido.');
-  const createMessage = httpsCallable<
-    { topicId: string; content: string },
-    Record<string, unknown> & { id: string; created_at: number; updated_at: number }
-  >(getFunctions(app), 'createForumMessage');
-  const { data } = await createMessage({ topicId: dto.topicId, content: dto.content });
-  return mapDocToForumMessage(data.id, dto.topicId, {
-    ...data,
-    created_at: new Date(data.created_at),
-    updated_at: new Date(data.updated_at),
+  const content = dto.content.trim();
+  if (!content || content.length > 2000) {
+    throw new Error('Escreva uma resposta de até 2000 caracteres.');
+  }
+
+  const topicRef = doc(db, TOPICS_COLLECTION, dto.topicId);
+  const messageRef = doc(collection(topicRef, MESSAGES_SUBCOLLECTION));
+  const messageData = {
+    topic_id: dto.topicId,
+    author_id: dto.authorId,
+    author_snapshot: toFirestoreAuthorSnapshot(dto.authorSnapshot),
+    content,
+    upvotes_count: 0,
+    downvotes_count: 0,
+    net_votes: 0,
+    is_deleted: false,
+    created_at: serverTimestamp(),
+    updated_at: serverTimestamp(),
+  };
+
+  await runTransaction(db, async (transaction) => {
+    const topicSnap = await transaction.get(topicRef);
+    if (!topicSnap.exists() || topicSnap.data().is_deleted) throw new Error('Tópico indisponível.');
+    if (topicSnap.data().is_locked) throw new Error('Este tópico está trancado.');
+
+    transaction.set(messageRef, messageData);
+    transaction.update(topicRef, {
+      replies_count: increment(1),
+      last_reply_at: serverTimestamp(),
+      last_reply_id: messageRef.id,
+    });
+  });
+
+  const now = new Date();
+  return mapDocToForumMessage(messageRef.id, dto.topicId, {
+    ...messageData,
+    created_at: now,
+    updated_at: now,
   });
 }
 
@@ -309,17 +358,67 @@ export async function updateForumMessage(topicId: string, messageId: string, upd
   });
 }
 
+/**
+ * Soft-deletes a reply and decrements the topic counter once, even on retries.
+ */
 export async function softDeleteForumMessage(topicId: string, messageId: string): Promise<void> {
-  const deleteMessage = httpsCallable(getFunctions(app), 'deleteForumMessage');
-  await deleteMessage({ topicId, messageId });
+  const userId = auth.currentUser?.uid;
+  const topicRef = doc(db, TOPICS_COLLECTION, topicId);
+  const messageRef = doc(topicRef, MESSAGES_SUBCOLLECTION, messageId);
+
+  await runTransaction(db, async (transaction) => {
+    const messageSnap = await transaction.get(messageRef);
+    if (!messageSnap.exists() || messageSnap.data().is_deleted) return;
+    if (messageSnap.data().author_id !== userId) {
+      throw new Error('Esta resposta pertence a outra pessoa.');
+    }
+
+    transaction.update(messageRef, { is_deleted: true, updated_at: serverTimestamp() });
+    transaction.update(topicRef, {
+      replies_count: increment(-1),
+      last_removed_reply_id: messageId,
+    });
+  });
 }
 
 // ---------- Votes ----------
 
+/**
+ * Toggles the user's vote and updates the item counters in one transaction:
+ * voting the same way again removes the vote, voting the other way switches it.
+ * Firestore rules check that the counters change exactly as the vote did.
+ */
+async function runVoteTransaction(
+  itemRef: DocumentReference,
+  voteRef: DocumentReference,
+  voteType: VoteType
+): Promise<void> {
+  await runTransaction(db, async (transaction) => {
+    const [itemSnap, voteSnap] = [await transaction.get(itemRef), await transaction.get(voteRef)];
+    if (!itemSnap.exists() || itemSnap.data().is_deleted) throw new Error('Conteúdo removido.');
+
+    const previous = voteSnap.exists() ? (voteSnap.data().vote_type as VoteType) : null;
+    const next = previous === voteType ? null : voteType;
+    const up = Number(next === 'up') - Number(previous === 'up');
+    const down = Number(next === 'down') - Number(previous === 'down');
+
+    if (next === null) {
+      transaction.delete(voteRef);
+    } else {
+      transaction.set(voteRef, { vote_type: next, created_at: serverTimestamp() });
+    }
+    transaction.update(itemRef, {
+      upvotes_count: increment(up),
+      downvotes_count: increment(down),
+      net_votes: increment(up - down),
+    });
+  });
+}
+
 export async function castTopicVote(topicId: string, userId: string, voteType: VoteType): Promise<void> {
   if (userId !== auth.currentUser?.uid) throw new Error('Usuário inválido.');
-  const castVote = httpsCallable(getFunctions(app), 'castForumVote');
-  await castVote({ topicId, voteType });
+  const topicRef = doc(db, TOPICS_COLLECTION, topicId);
+  await runVoteTransaction(topicRef, doc(topicRef, VOTES_SUBCOLLECTION, userId), voteType);
 }
 
 export async function getUserTopicVote(topicId: string, userId: string): Promise<VoteType | null> {
@@ -330,8 +429,8 @@ export async function getUserTopicVote(topicId: string, userId: string): Promise
 
 export async function castMessageVote(topicId: string, messageId: string, userId: string, voteType: VoteType): Promise<void> {
   if (userId !== auth.currentUser?.uid) throw new Error('Usuário inválido.');
-  const castVote = httpsCallable(getFunctions(app), 'castForumVote');
-  await castVote({ topicId, messageId, voteType });
+  const messageRef = doc(db, TOPICS_COLLECTION, topicId, MESSAGES_SUBCOLLECTION, messageId);
+  await runVoteTransaction(messageRef, doc(messageRef, VOTES_SUBCOLLECTION, userId), voteType);
 }
 
 export async function getUserMessageVote(topicId: string, messageId: string, userId: string): Promise<VoteType | null> {

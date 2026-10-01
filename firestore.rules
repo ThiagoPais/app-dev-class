@@ -35,6 +35,89 @@ service cloud.firestore {
       }
     }
 
+    // ---------- Forum ----------
+    // Without Cloud Functions the app writes votes, replies and counters itself.
+    // Each counter may only change in the same transaction as the vote or reply
+    // that justifies it, so clients cannot forge numbers.
+
+    function topicPath(topicId) {
+      return /databases/$(database)/documents/forum_topics/$(topicId);
+    }
+
+    function messagePath(topicId, messageId) {
+      return /databases/$(database)/documents/forum_topics/$(topicId)/messages/$(messageId);
+    }
+
+    function topicVotePath(topicId, userId) {
+      return /databases/$(database)/documents/forum_topics/$(topicId)/votes/$(userId);
+    }
+
+    function messageVotePath(topicId, messageId, userId) {
+      return /databases/$(database)/documents/forum_topics/$(topicId)/messages/$(messageId)/votes/$(userId);
+    }
+
+    function voteDelta(after, before, type) {
+      return (after == type ? 1 : 0) - (before == type ? 1 : 0);
+    }
+
+    // Item (topic or reply) counters changed exactly as the requester's vote did.
+    function countersFollowVote(votePath) {
+      let before = exists(votePath) ? get(votePath).data.vote_type : null;
+      let after = existsAfter(votePath) ? getAfter(votePath).data.vote_type : null;
+      let up = voteDelta(after, before, 'up');
+      let down = voteDelta(after, before, 'down');
+      return before != after
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['upvotes_count', 'downvotes_count', 'net_votes'])
+        && request.resource.data.upvotes_count == resource.data.upvotes_count + up
+        && request.resource.data.downvotes_count == resource.data.downvotes_count + down
+        && request.resource.data.net_votes == resource.data.net_votes + up - down;
+    }
+
+    // Vote document written together with the matching counter change on its item.
+    function voteFollowedByCounters(itemPath) {
+      let before = resource == null ? null : resource.data.vote_type;
+      let after = request.method == 'delete' ? null : request.resource.data.vote_type;
+      let up = voteDelta(after, before, 'up');
+      let down = voteDelta(after, before, 'down');
+      return before != after
+        && (request.method == 'delete'
+          || (request.resource.data.keys().hasOnly(['vote_type', 'created_at'])
+            && after in ['up', 'down']
+            && request.resource.data.created_at == request.time))
+        && !get(itemPath).data.is_deleted
+        && getAfter(itemPath).data.upvotes_count == get(itemPath).data.upvotes_count + up
+        && getAfter(itemPath).data.downvotes_count == get(itemPath).data.downvotes_count + down
+        && getAfter(itemPath).data.net_votes == get(itemPath).data.net_votes + up - down;
+    }
+
+    // Topic counter bump that accompanies a reply created in the same transaction.
+    function replyAdded(topicId) {
+      let replyId = request.resource.data.get('last_reply_id', '');
+      let replyPath = messagePath(topicId, replyId);
+      return !resource.data.is_locked
+        && replyId != ''
+        && !exists(replyPath)
+        && existsAfter(replyPath)
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['replies_count', 'last_reply_at', 'last_reply_id'])
+        && request.resource.data.replies_count == resource.data.replies_count + 1
+        && request.resource.data.last_reply_at == request.time;
+    }
+
+    // Topic counter decrement that accompanies the author removing their reply.
+    function replyRemoved(topicId) {
+      let replyId = request.resource.data.get('last_removed_reply_id', '');
+      let replyPath = messagePath(topicId, replyId);
+      return replyId != ''
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['replies_count', 'last_removed_reply_id'])
+        && request.resource.data.replies_count == resource.data.replies_count - 1
+        && get(replyPath).data.author_id == request.auth.uid
+        && get(replyPath).data.is_deleted == false
+        && getAfter(replyPath).data.is_deleted == true;
+    }
+
     match /forum_topics/{topicId} {
       allow read: if isAuthenticated()
         && (resource == null || !resource.data.is_deleted || isOwner(resource.data.author_id));
@@ -49,35 +132,77 @@ service cloud.firestore {
         && request.resource.data.is_locked == false
         && request.resource.data.is_deleted == false;
 
-      // Callable functions own counters, votes and activity timestamps.
-      allow update: if isOwner(resource.data.author_id)
-        && !resource.data.is_deleted
-        && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['title', 'content', 'updated_at', 'is_deleted'])
-        && request.resource.data.updated_at == request.time
-        && request.resource.data.is_deleted is bool;
+      allow update: if (isOwner(resource.data.author_id)
+          && !resource.data.is_deleted
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['title', 'content', 'updated_at', 'is_deleted'])
+          && request.resource.data.updated_at == request.time
+          && request.resource.data.is_deleted is bool)
+        || (isAuthenticated() && !resource.data.is_deleted && (
+          countersFollowVote(topicVotePath(topicId, request.auth.uid))
+          || replyAdded(topicId)
+          || replyRemoved(topicId)));
       allow delete: if false;
 
       match /votes/{userId} {
         allow read: if isOwner(userId) && topicAvailable(topicId);
-        allow write: if false;
+        allow create, update, delete: if isOwner(userId)
+          && topicAvailable(topicId)
+          && voteFollowedByCounters(topicPath(topicId));
       }
 
       match /messages/{messageId} {
+        // Authors can still read their removed reply so a retried delete is a no-op.
         allow read: if isAuthenticated() && topicAvailable(topicId)
-          && (resource == null || !resource.data.is_deleted);
-        allow create, delete: if false;
-        allow update: if isOwner(resource.data.author_id)
+          && (resource == null || !resource.data.is_deleted || isOwner(resource.data.author_id));
+
+        allow create: if isOwner(request.resource.data.author_id)
           && topicAvailable(topicId)
-          && !resource.data.is_deleted
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'updated_at'])
-          && request.resource.data.updated_at == request.time;
+          && !get(topicPath(topicId)).data.is_locked
+          && request.resource.data.keys().hasOnly(['topic_id', 'author_id', 'author_snapshot',
+            'content', 'upvotes_count', 'downvotes_count', 'net_votes', 'is_deleted',
+            'created_at', 'updated_at'])
+          && request.resource.data.topic_id == topicId
+          && request.resource.data.author_snapshot.full_name
+            == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.fullName
+          && request.resource.data.content is string
+          && request.resource.data.content.size() > 0
+          && request.resource.data.content.size() <= 2000
+          && request.resource.data.upvotes_count == 0
+          && request.resource.data.downvotes_count == 0
+          && request.resource.data.net_votes == 0
+          && request.resource.data.is_deleted == false
+          && request.resource.data.created_at == request.time
+          && request.resource.data.updated_at == request.time
+          && getAfter(topicPath(topicId)).data.replies_count
+            == get(topicPath(topicId)).data.replies_count + 1
+          && getAfter(topicPath(topicId)).data.last_reply_id == messageId;
+
+        allow update: if topicAvailable(topicId) && !resource.data.is_deleted && (
+          (isOwner(resource.data.author_id)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'updated_at'])
+            && request.resource.data.content is string
+            && request.resource.data.content.size() > 0
+            && request.resource.data.content.size() <= 2000
+            && request.resource.data.updated_at == request.time)
+          || (isOwner(resource.data.author_id)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['is_deleted', 'updated_at'])
+            && request.resource.data.is_deleted == true
+            && request.resource.data.updated_at == request.time
+            && getAfter(topicPath(topicId)).data.replies_count
+              == get(topicPath(topicId)).data.replies_count - 1
+            && getAfter(topicPath(topicId)).data.last_removed_reply_id == messageId)
+          || (isAuthenticated()
+            && countersFollowVote(messageVotePath(topicId, messageId, request.auth.uid))));
+        allow delete: if false;
 
         match /votes/{userId} {
           allow read: if isOwner(userId)
             && topicAvailable(topicId)
-            && !get(/databases/$(database)/documents/forum_topics/$(topicId)/messages/$(messageId)).data.is_deleted;
-          allow write: if false;
+            && !get(messagePath(topicId, messageId)).data.is_deleted;
+          allow create, update, delete: if isOwner(userId)
+            && topicAvailable(topicId)
+            && voteFollowedByCounters(messagePath(topicId, messageId));
         }
       }
     }

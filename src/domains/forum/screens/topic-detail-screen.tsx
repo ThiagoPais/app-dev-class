@@ -38,11 +38,17 @@ export function TopicDetailScreen({ topicId }: { topicId: string }) {
   const editingMessage = messages.find((message) => message.id === editingMessageId) ?? null;
 
   const handleTopicVote = (voteType: VoteType) => {
-    detail.voteTopic(voteType).catch(() => showAlert('Ops!', VOTE_ERROR));
+    detail.voteTopic(voteType).catch((error) => {
+      console.warn('[forum] Failed to vote on topic:', error);
+      showAlert('Ops!', VOTE_ERROR);
+    });
   };
 
   const handleMessageVote = (messageId: string, voteType: VoteType) => {
-    detail.voteMessage(messageId, voteType).catch(() => showAlert('Ops!', VOTE_ERROR));
+    detail.voteMessage(messageId, voteType).catch((error) => {
+      console.warn('[forum] Failed to vote on reply:', error);
+      showAlert('Ops!', VOTE_ERROR);
+    });
   };
 
   const handleSubmitReply = async (content: string): Promise<boolean> => {
@@ -54,7 +60,8 @@ export function TopicDetailScreen({ topicId }: { topicId: string }) {
         await detail.sendMessage(content);
       }
       return true;
-    } catch {
+    } catch (error) {
+      console.warn('[forum] Failed to save reply:', error);
       showAlert(
         'Ops!',
         topic?.isLocked

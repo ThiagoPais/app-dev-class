@@ -1,4 +1,6 @@
 export * from './author-avatar';
+export * from './category-chips';
+export * from './city-card';
 export * from './city-chips';
 export * from './forum-header';
 export * from './message-item';
