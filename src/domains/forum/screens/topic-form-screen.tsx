@@ -15,14 +15,26 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AppButton, AppTextInput } from '@/shared/components/ui';
 import { BrandColors } from '@/shared/constants/colors';
 
+import { CategoryChips } from '../components/category-chips';
 import { CityChips } from '../components/city-chips';
 import { ForumHeader } from '../components/forum-header';
+import { getCategoryLabel, type ForumCategory } from '../constants/categories';
+import { FORUM_CITIES } from '../constants/regions';
 import { CONTENT_MAX_LENGTH, TITLE_MAX_LENGTH, useTopicForm } from '../hooks/use-topic-form';
 
-export function TopicFormScreen({ topicId }: { topicId?: string }) {
+interface TopicFormScreenProps {
+  topicId?: string;
+  /** RA forum the form was opened from; the RA is then fixed. */
+  initialCity?: string | null;
+  initialCategory?: ForumCategory | null;
+}
+
+export function TopicFormScreen({ topicId, initialCity, initialCategory }: TopicFormScreenProps) {
+  const fixedCity =
+    initialCity && (FORUM_CITIES as readonly string[]).includes(initialCity) ? initialCity : null;
   const { bottom } = useSafeAreaInsets();
   const { values, errors, isEditing, isLoading, isSubmitting, handleChange, submit } =
-    useTopicForm(topicId);
+    useTopicForm(topicId, { initialCity: fixedCity, initialCategory });
   const [isContentFocused, setIsContentFocused] = useState(false);
 
   const handleSubmit = async () => {
@@ -58,7 +70,7 @@ export function TopicFormScreen({ topicId }: { topicId?: string }) {
           <ScrollView
             contentContainerStyle={[styles.content, { paddingBottom: Math.max(bottom, 16) + 16 }]}
             keyboardShouldPersistTaps="handled">
-            {!isEditing ? (
+            {!isEditing && !fixedCity ? (
               <View style={styles.field}>
                 <Text style={styles.label}>Sobre qual RA?</Text>
                 <CityChips onSelect={(city) => handleChange('city', city)} selected={values.city} />
@@ -67,6 +79,19 @@ export function TopicFormScreen({ topicId }: { topicId?: string }) {
             ) : (
               <Text style={styles.cityInfo}>RA: {values.city}</Text>
             )}
+
+            {!isEditing ? (
+              <View style={styles.field}>
+                <Text style={styles.label}>Qual a área?</Text>
+                <CategoryChips
+                  onSelect={(category) => handleChange('category', category)}
+                  selected={values.category}
+                />
+                {errors.category ? <Text style={styles.error}>{errors.category}</Text> : null}
+              </View>
+            ) : values.category ? (
+              <Text style={styles.cityInfo}>Área: {getCategoryLabel(values.category)}</Text>
+            ) : null}
 
             <AppTextInput
               error={errors.title}

@@ -1,6 +1,7 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 
+import type { ForumCategory } from '../constants/categories';
 import { FORUM_REGION } from '../constants/regions';
 import type { ForumTopic } from '../models/forumTypes';
 import { getTopicFeedPage, type ForumCursor } from '../services/forum.service';
@@ -11,7 +12,7 @@ function pinnedFirst(topics: ForumTopic[]): ForumTopic[] {
   return [...topics].sort((a, b) => Number(b.isPinned) - Number(a.isPinned));
 }
 
-export function useTopicFeed(city: string | null) {
+export function useTopicFeed(city: string | null, category: ForumCategory | null = null) {
   const [topics, setTopics] = useState<ForumTopic[]>([]);
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -23,7 +24,7 @@ export function useTopicFeed(city: string | null) {
   const pending = useRef(false);
   const failedMode = useRef<'focus' | 'refresh' | 'more'>('focus');
   const nextPage = useRef({ cursor: null as ForumCursor, hasMore: false, scope: '' });
-  const scope = JSON.stringify([city, search]);
+  const scope = JSON.stringify([city, category, search]);
 
   const load = useCallback(
     async (mode: 'focus' | 'refresh' | 'more') => {
@@ -44,7 +45,7 @@ export function useTopicFeed(city: string | null) {
 
       try {
         const page = await getTopicFeedPage(
-          FORUM_REGION, city, search,
+          { region: FORUM_REGION, city, category, search },
           mode === 'more' ? nextPage.current.cursor : null, isActive
         );
         if (!isActive()) return;
@@ -69,7 +70,7 @@ export function useTopicFeed(city: string | null) {
         }
       }
     },
-    [city, search, scope]
+    [city, category, search, scope]
   );
 
   useFocusEffect(

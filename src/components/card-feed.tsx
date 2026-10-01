@@ -14,6 +14,8 @@ export type CardFeedProps = {
   descriptionLines?: number;
   /** Estado: controla o ponto, o texto e as cores do selo */
   active?: boolean;
+  /** Texto do status quando inativo (padrao: "Inativa") */
+  inactiveLabel?: string;
   lastActivity?: string;
   /** Cores (todas opcionais) */
   backgroundColor?: string;
@@ -37,6 +39,7 @@ export function CardFeed({
   badgeLabel,
   descriptionLines,
   active = false,
+  inactiveLabel = 'Inativa',
   lastActivity,
   backgroundColor = '#FFFFFF',
   textColor = '#000000',
@@ -48,7 +51,7 @@ export function CardFeed({
   const badgeColor = active ? accentColor : InactiveColor;
   const badgeBackground = active ? accentBackground : InactiveBackground;
   const statusColor = active ? ActiveColor : InactiveColor;
-  const statusLabel = active ? 'Ativa agora' : 'Inativa';
+  const statusLabel = active ? 'Ativa agora' : inactiveLabel;
 
   return (
     <View style={[styles.contentCard, { backgroundColor }]}>
