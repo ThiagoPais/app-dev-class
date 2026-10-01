@@ -4,7 +4,7 @@ CPF login and forum counters use callable functions in `us-central1`. The app ca
 
 `signInWithCpf` reads the CPF mapping on the server, verifies the password with Firebase Auth, and returns a custom token. Invalid credentials and unknown CPFs return the same error. User profiles stay private.
 
-`createForumMessage`, `deleteForumMessage`, and `castForumVote` update messages, votes, and counters in transactions. Direct client writes to counters and votes are denied. Reply deletion is idempotent, including concurrent retries. Deleted replies and replies inside deleted topics are unreadable.
+`createForumMessage`, `deleteForumMessage`, and `castForumVote` are no longer called by the app. Cloud Functions need the Blaze plan, so the app now writes votes, replies, and counters in client transactions (`src/domains/forum/services/forum.service.ts`). `firestore.rules` only accepts a counter change together with the vote or reply that justifies it, so forged counters are still denied. Run `npm run test:rules` to check the rules against the Firestore emulator. The functions stay here in case the project moves to Blaze.
 
 ## Deploy
 

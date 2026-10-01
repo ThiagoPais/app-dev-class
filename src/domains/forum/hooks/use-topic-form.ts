@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { useAuth } from '@/domains/auth';
 
+import { DEFAULT_FORUM_CATEGORY, type ForumCategory } from '../constants/categories';
 import { FORUM_REGION } from '../constants/regions';
 import { createForumTopic, getForumTopic, updateForumTopic } from '../services/forum.service';
 
@@ -12,24 +13,38 @@ export interface TopicFormValues {
   title: string;
   content: string;
   city: string | null;
+  category: ForumCategory | null;
+}
+
+export interface TopicFormOptions {
+  /** RA forum the topic is being created from; fixes the RA in the form. */
+  initialCity?: string | null;
+  /** Area selected in the RA forum when "Novo tópico" was tapped. */
+  initialCategory?: ForumCategory | null;
 }
 
 export interface TopicFormErrors {
   title?: string;
   content?: string;
   city?: string;
+  category?: string;
   general?: string;
 }
 
 /**
  * Form state for creating a topic, or editing one when `topicId` is given.
- * Only the title and content can be edited; the RA is fixed after creation.
+ * Only the title and content can be edited; the RA and area are fixed after creation.
  */
-export function useTopicForm(topicId?: string) {
+export function useTopicForm(topicId?: string, options: TopicFormOptions = {}) {
   const { user } = useAuth();
   const isEditing = Boolean(topicId);
 
-  const [values, setValues] = useState<TopicFormValues>({ title: '', content: '', city: null });
+  const [values, setValues] = useState<TopicFormValues>({
+    title: '',
+    content: '',
+    city: options.initialCity ?? null,
+    category: options.initialCategory ?? null,
+  });
   const [errors, setErrors] = useState<TopicFormErrors>({});
   const [isLoading, setIsLoading] = useState(isEditing);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -45,7 +60,12 @@ export function useTopicForm(topicId?: string) {
           setErrors({ general: 'Você não pode editar este tópico.' });
           return;
         }
-        setValues({ title: topic.title, content: topic.content, city: topic.city });
+        setValues({
+          title: topic.title,
+          content: topic.content,
+          city: topic.city,
+          category: topic.category,
+        });
       })
       .catch(() => {
         if (!cancelled) setErrors({ general: 'Não foi possível carregar o tópico.' });
@@ -78,6 +98,9 @@ export function useTopicForm(topicId?: string) {
     if (!isEditing && !values.city) {
       newErrors.city = 'Escolha a RA sobre a qual você quer conversar.';
     }
+    if (!isEditing && !values.category) {
+      newErrors.category = 'Escolha a área do tópico.';
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -101,6 +124,7 @@ export function useTopicForm(topicId?: string) {
         content: values.content,
         region: FORUM_REGION,
         city: values.city!,
+        category: values.category ?? DEFAULT_FORUM_CATEGORY,
       });
       return topic.id;
     } catch {

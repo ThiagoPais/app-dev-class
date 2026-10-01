@@ -1,3 +1,5 @@
+import type { ForumCategory } from '../constants/categories';
+
 export type VoteType = 'up' | 'down';
 
 export type TopicFeedSort = 'recent' | 'top';
@@ -16,6 +18,7 @@ export interface ForumTopic {
   region: string;
   city: string;
   cityNormalized: string;
+  category: ForumCategory;
   upvotesCount: number;
   downvotesCount: number;
   netVotes: number;
@@ -61,6 +64,7 @@ export interface CreateForumTopicDTO {
   content: string;
   region: string;
   city: string;
+  category: ForumCategory;
 }
 
 export interface UpdateForumTopicDTO {

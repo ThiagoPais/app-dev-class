@@ -50,7 +50,8 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "test:forum": "bun test tests/forum-ui.test.js",
-    "test:forum:emulator": "bun test tests/forum-pagination.test.js"
+    "test:forum:emulator": "bun test tests/forum-pagination.test.js",
+    "test:rules": "npx -y firebase-tools emulators:exec --only firestore --project demo-forum-rules \"node --import ./tests/rules/register.mjs --test tests/rules/forum-rules.test.mjs\""
   },
   "private": true
 }

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -20,49 +20,32 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { BrandColors } from '@/shared/constants/colors';
 
-import { CityChips } from '../components/city-chips';
-import { PaginationFooter } from '../components/pagination-footer';
-import { TopicCard } from '../components/topic-card';
-import { useTopicFeed } from '../hooks/use-topic-feed';
+import { CityCard } from '../components/city-card';
+import { useCityOverview } from '../hooks/use-city-overview';
+import { normalizeCityName } from '../services/forum.service';
 
 /** Space kept free at the bottom for the floating tab bar. */
 const TAB_BAR_SPACE = 84;
 
+/**
+ * First level of the forum: one card per RA with its latest activity. Each RA
+ * has its own forum, opened in CityForumScreen, where topics are filtered by area.
+ */
 export function ForumScreen() {
   const theme = useTheme();
   const { bottom } = useSafeAreaInsets();
-  const [city, setCity] = useState<string | null>(null);
-  const { topics, hasTopics, search, setSearch, isLoading, isRefreshing, isLoadingMore, hasMore, errorMessage, refresh, loadMore, retry } =
-    useTopicFeed(city);
+  const [search, setSearch] = useState('');
+  const { cities, isLoading, isRefreshing, errorMessage, refresh } = useCityOverview();
 
-  const tabBarOffset = Math.max(bottom, 13) + TAB_BAR_SPACE;
-
-  const renderEmpty = () => {
-    if (isLoading) {
-      return <ActivityIndicator color={BrandColors.primary} style={styles.loading} />;
-    }
-    if (errorMessage) {
-      return <EmptyState icon="cloud-offline-outline" message={errorMessage} />;
-    }
-    if (search.trim()) {
-      return <EmptyState icon="search-outline" message="Nenhum tópico encontrado para essa busca." />;
-    }
-    return (
-      <EmptyState
-        icon="chatbubbles-outline"
-        message={
-          city
-            ? `Ainda não há conversas sobre ${city}. Que tal começar uma?`
-            : 'Ainda não há conversas. Que tal começar a primeira?'
-        }
-      />
-    );
-  };
+  const visibleCities = useMemo(() => {
+    const term = normalizeCityName(search);
+    return term ? cities.filter(({ city }) => normalizeCityName(city).includes(term)) : cities;
+  }, [cities, search]);
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView edges={['top', 'left', 'right']} style={styles.content}>
-        <ThemedText type="subtitle">Forum</ThemedText>
+        <ThemedText type="subtitle">Fórum</ThemedText>
         <ThemedText themeColor="textSecondary">converse com moradores das RAs</ThemedText>
 
         <View style={styles.searchBar}>
@@ -73,8 +56,9 @@ export function ForumScreen() {
             tintColor={theme.textSecondary}
           />
           <TextInput
+            autoCorrect={false}
             onChangeText={setSearch}
-            placeholder="Pesquisa Conversa..."
+            placeholder="Buscar região administrativa..."
             placeholderTextColor={theme.textSecondary}
             returnKeyType="search"
             style={[styles.searchInput, { color: theme.text }]}
@@ -87,67 +71,44 @@ export function ForumScreen() {
           ) : null}
         </View>
 
-        <View style={styles.chips}>
-          <CityChips allLabel="Todas as RAs" onSelect={setCity} selected={city} />
-        </View>
+        {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
 
-        <FlatList
-          contentContainerStyle={[styles.feedContent, { paddingBottom: tabBarOffset + 72 }]}
-          data={errorMessage && !hasTopics ? [] : topics}
-          keyboardShouldPersistTaps="handled"
-          keyExtractor={(topic) => topic.id}
-          ListEmptyComponent={renderEmpty}
-          ListFooterComponent={hasTopics ? (
-            <PaginationFooter isLoading={isLoadingMore} hasMore={hasMore}
-              errorMessage={errorMessage} onLoadMore={errorMessage ? retry : loadMore} />
-          ) : null}
-          onEndReached={errorMessage ? undefined : loadMore}
-          onEndReachedThreshold={0.4}
-          refreshControl={
-            <RefreshControl
-              colors={[BrandColors.primary]}
-              onRefresh={refresh}
-              refreshing={isRefreshing}
-              tintColor={BrandColors.primary}
-            />
-          }
-          renderItem={({ item }) => (
-            <TopicCard
-              onPress={() =>
-                router.push({ pathname: '/forum/[topicId]', params: { topicId: item.id } })
-              }
-              topic={item}
-            />
-          )}
-          showsVerticalScrollIndicator={false}
-          style={styles.feed}
-        />
+        {isLoading ? (
+          <ActivityIndicator color={BrandColors.primary} style={styles.loading} />
+        ) : (
+          <FlatList
+            contentContainerStyle={{ paddingBottom: Math.max(bottom, 13) + TAB_BAR_SPACE }}
+            data={visibleCities}
+            keyboardShouldPersistTaps="handled"
+            keyExtractor={({ city }) => city}
+            ListEmptyComponent={
+              <View style={styles.empty}>
+                <Ionicons color={BrandColors.textMuted} name="search-outline" size={36} />
+                <Text style={styles.emptyText}>Nenhuma RA encontrada para essa busca.</Text>
+              </View>
+            }
+            refreshControl={
+              <RefreshControl
+                colors={[BrandColors.primary]}
+                onRefresh={refresh}
+                refreshing={isRefreshing}
+                tintColor={BrandColors.primary}
+              />
+            }
+            renderItem={({ item }) => (
+              <CityCard
+                onPress={() =>
+                  router.push({ pathname: '/forum/ra/[city]', params: { city: item.city } })
+                }
+                overview={item}
+              />
+            )}
+            showsVerticalScrollIndicator={false}
+            style={styles.list}
+          />
+        )}
       </SafeAreaView>
-
-      <Pressable
-        accessibilityLabel="Criar novo tópico"
-        accessibilityRole="button"
-        onPress={() => router.push('/forum/new')}
-        style={({ pressed }) => [styles.fab, { bottom: tabBarOffset }, pressed && styles.fabPressed]}>
-        <Ionicons color={BrandColors.white} name="add" size={22} />
-        <Text style={styles.fabText}>Novo tópico</Text>
-      </Pressable>
     </ThemedView>
-  );
-}
-
-function EmptyState({
-  icon,
-  message,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  message: string;
-}) {
-  return (
-    <View style={styles.empty}>
-      <Ionicons color={BrandColors.textMuted} name={icon} size={36} />
-      <Text style={styles.emptyText}>{message}</Text>
-    </View>
   );
 }
 
@@ -170,6 +131,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     alignSelf: 'stretch',
     marginTop: Spacing.four,
+    marginBottom: Spacing.three,
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.three,
     borderRadius: 999,
@@ -180,22 +142,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     padding: 0,
   },
-  chips: {
-    marginTop: Spacing.three,
-    marginBottom: Spacing.three,
-  },
-  feed: {
-    alignSelf: 'stretch',
-  },
-  feedContent: {
-    flexGrow: 1,
-  },
   icon: {
     width: 18,
     height: 18,
   },
+  list: {
+    alignSelf: 'stretch',
+  },
   loading: {
     marginTop: Spacing.six,
+  },
+  error: {
+    marginBottom: Spacing.two,
+    color: '#DC2626',
+    fontSize: 13,
   },
   empty: {
     alignItems: 'center',
@@ -207,29 +167,5 @@ const styles = StyleSheet.create({
     color: BrandColors.textSecondary,
     fontSize: 15,
     textAlign: 'center',
-  },
-  fab: {
-    position: 'absolute',
-    right: 20,
-    height: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 18,
-    borderRadius: 24,
-    backgroundColor: BrandColors.primary,
-    shadowColor: BrandColors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  fabPressed: {
-    opacity: 0.88,
-  },
-  fabText: {
-    color: BrandColors.white,
-    fontSize: 15,
-    fontWeight: '700',
   },
 });
