@@ -14,6 +14,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Spacing } from '@/constants/theme';
+import { MiniProfileSheet, type ChatParticipant } from '@/domains/chat';
 import { BrandColors } from '@/shared/constants/colors';
 
 import { CategoryChips } from '../components/category-chips';
@@ -45,6 +46,7 @@ export function CityForumScreen({ city }: { city: string }) {
 function CityForum({ city }: { city: string }) {
   const { bottom } = useSafeAreaInsets();
   const [category, setCategory] = useState<ForumCategory | null>(null);
+  const [profileUser, setProfileUser] = useState<ChatParticipant | null>(null);
   const {
     topics,
     hasTopics,
@@ -150,6 +152,7 @@ function CityForum({ city }: { city: string }) {
         }
         renderItem={({ item }) => (
           <TopicCard
+            onAuthorPress={() => setProfileUser({ id: item.authorId, ...item.authorSnapshot })}
             onPress={() =>
               router.push({ pathname: '/forum/[topicId]', params: { topicId: item.id } })
             }
@@ -172,6 +175,8 @@ function CityForum({ city }: { city: string }) {
         style={({ pressed }) => [styles.fab, { bottom: fabBottom }, pressed && styles.fabPressed]}>
         <Ionicons color={BrandColors.white} name="pencil" size={22} />
       </Pressable>
+
+      <MiniProfileSheet onClose={() => setProfileUser(null)} participant={profileUser} />
     </SafeAreaView>
   );
 }
