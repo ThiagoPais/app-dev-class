@@ -1,4 +1,4 @@
-import type { Timestamp } from 'firebase/firestore';
+import { serverTimestamp, type Timestamp } from 'firebase/firestore';
 
 import { LAST_MESSAGE_PREVIEW_LENGTH } from '../constants';
 import type {
@@ -11,6 +11,7 @@ import type {
   ChatSystemEventKind,
   ChatType,
 } from '../models';
+import { ChatError } from '../utils/chat-error';
 
 type WireData = Record<string, unknown>;
 
@@ -94,4 +95,48 @@ export function mapDocToChatMessage(id: string, chatId: string, data: WireData):
 
 export function truncatePreview(text: string): string {
   return text.slice(0, LAST_MESSAGE_PREVIEW_LENGTH);
+}
+
+export function assertMember(chat: Chat, userId: string): void {
+  if (!chat.userIds.includes(userId)) throw new ChatError('CHAT_NOT_PARTICIPANT');
+}
+
+export function assertAdmin(chat: Chat, userId: string): void {
+  if (!chat.adminIds.includes(userId)) throw new ChatError('CHAT_NOT_ADMIN');
+}
+
+export function assertGroup(chat: Chat): void {
+  if (chat.type !== 'group') throw new ChatError('CHAT_NOT_GROUP');
+}
+
+export function systemMessageData(
+  chatId: string,
+  kind: ChatSystemEventKind,
+  actorId: string,
+  targetIds: string[]
+) {
+  return {
+    chat_id: chatId,
+    type: 'system' as const,
+    author_id: null,
+    author_snapshot: null,
+    message: null,
+    system_event: { kind, actor_id: actorId, target_ids: [...targetIds] },
+    is_deleted: false,
+    created_at: serverTimestamp(),
+    updated_at: serverTimestamp(),
+  };
+}
+
+/**
+ * Drops admins who are no longer members; if none remain, promotes the oldest
+ * remaining member (`userIds` is kept in join order).
+ */
+export function applyAdminSuccession(
+  userIds: string[],
+  adminIds: string[]
+): { adminIds: string[]; promoted: string | null } {
+  const remaining = adminIds.filter((id) => userIds.includes(id));
+  if (remaining.length > 0 || userIds.length === 0) return { adminIds: remaining, promoted: null };
+  return { adminIds: [userIds[0]], promoted: userIds[0] };
 }
