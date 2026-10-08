@@ -16,6 +16,8 @@ interface MessageItemProps {
   onVote: (voteType: VoteType) => void;
   onEdit: () => void;
   onDelete: () => void;
+  /** Tapping the author opens their mini profile. */
+  onAuthorPress?: () => void;
 }
 
 export function MessageItem({
@@ -26,12 +28,18 @@ export function MessageItem({
   onVote,
   onEdit,
   onDelete,
+  onAuthorPress,
 }: MessageItemProps) {
   const edited = wasEdited(message.createdAt, message.updatedAt);
 
   return (
     <View style={[styles.card, isBeingEdited && styles.cardEditing]}>
-      <View style={styles.header}>
+      <Pressable
+        accessibilityHint="Abre o perfil de quem respondeu"
+        accessibilityRole="button"
+        disabled={!onAuthorPress}
+        onPress={onAuthorPress}
+        style={styles.header}>
         <AuthorAvatar author={message.authorSnapshot} size={30} />
         <View style={styles.meta}>
           <Text numberOfLines={1} style={styles.author}>
@@ -43,7 +51,7 @@ export function MessageItem({
             {edited ? ' · editado' : ''}
           </Text>
         </View>
-      </View>
+      </Pressable>
 
       <Text style={styles.content}>{message.content}</Text>
 

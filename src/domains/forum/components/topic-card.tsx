@@ -8,36 +8,57 @@ import type { ForumTopic } from '../models/forumTypes';
 import { formatRelativeTime } from '../utils/format';
 import { AuthorAvatar } from './author-avatar';
 
-export function TopicCard({ topic, onPress }: { topic: ForumTopic; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityHint="Abre o tópico e suas respostas"
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
-      <View style={styles.header}>
-        <Text numberOfLines={2} style={styles.title}>
-          {topic.isPinned ? `📌 ${topic.title}` : topic.title}
-        </Text>
-        <View style={styles.badge}>
-          <Text numberOfLines={1} style={styles.badgeText}>
-            {getCategoryLabel(topic.category).toUpperCase()}
-          </Text>
-        </View>
-      </View>
+interface TopicCardProps {
+  topic: ForumTopic;
+  onPress: () => void;
+  /** Tapping the author opens their mini profile. */
+  onAuthorPress?: () => void;
+}
 
-      <Text numberOfLines={2} style={styles.content}>
-        {topic.content}
-      </Text>
+export function TopicCard({ topic, onPress, onAuthorPress }: TopicCardProps) {
+  // The card is a plain View with sibling pressables: on web each Pressable is a
+  // <button>, and the author button cannot be nested inside the card button.
+  return (
+    <View style={styles.card}>
+      <Pressable
+        accessibilityHint="Abre o tópico e suas respostas"
+        accessibilityRole="button"
+        onPress={onPress}
+        style={({ pressed }) => pressed && styles.pressed}>
+        <View style={styles.header}>
+          <Text numberOfLines={2} style={styles.title}>
+            {topic.isPinned ? `📌 ${topic.title}` : topic.title}
+          </Text>
+          <View style={styles.badge}>
+            <Text numberOfLines={1} style={styles.badgeText}>
+              {getCategoryLabel(topic.category).toUpperCase()}
+            </Text>
+          </View>
+        </View>
+
+        <Text numberOfLines={2} style={styles.content}>
+          {topic.content}
+        </Text>
+      </Pressable>
 
       <View style={styles.footer}>
-        <View style={styles.author}>
+        <Pressable
+          accessibilityHint="Abre o perfil de quem criou o tópico"
+          accessibilityRole="button"
+          disabled={!onAuthorPress}
+          hitSlop={6}
+          onPress={onAuthorPress}
+          style={({ pressed }) => [styles.author, pressed && styles.pressed]}>
           <AuthorAvatar author={topic.authorSnapshot} size={22} />
           <Text numberOfLines={1} style={styles.meta}>
             {topic.authorSnapshot.fullName || 'Usuário'} • {formatRelativeTime(topic.lastReplyAt)}
           </Text>
-        </View>
-        <View style={styles.metrics}>
+        </Pressable>
+        <Pressable
+          accessibilityLabel={`${topic.repliesCount} respostas e ${topic.upvotesCount} curtidas`}
+          accessibilityRole="button"
+          onPress={onPress}
+          style={({ pressed }) => [styles.metrics, pressed && styles.pressed]}>
           <View style={styles.metric}>
             <Ionicons color={BrandColors.textSecondary} name="chatbubbles-outline" size={15} />
             <Text style={styles.metricText}>{topic.repliesCount}</Text>
@@ -50,9 +71,9 @@ export function TopicCard({ topic, onPress }: { topic: ForumTopic; onPress: () =
             />
             <Text style={styles.metricText}>{topic.upvotesCount}</Text>
           </View>
-        </View>
+        </Pressable>
       </View>
-    </Pressable>
+    </View>
   );
 }
 
