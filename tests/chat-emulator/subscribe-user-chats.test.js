@@ -193,3 +193,67 @@ describe('subscribeToUserChats', () => {
     for (const e of sx.emissions) expect(ids(e).every((i) => i === 'x_y')).toBe(true);
   }, T);
 });
+
+// User decision (overrides spec §3.2 "same query" for the limit only):
+// subscribeToUserChats is capped to the SUBSCRIBED_CHATS_LIMIT (50) most recent chats.
+describe('subscribeToUserChats cap (50 most recent)', () => {
+  const CAP = 50;
+  const pad = (n) => String(n).padStart(3, '0');
+  // chat i has last_message_at = i * 1000 (higher i = newer)
+  const seed = (from, to, owner = 'a', other = 'b') =>
+    Promise.all(
+      Array.from({ length: to - from + 1 }, (_, k) => {
+        const i = from + k;
+        return put(`${owner}_c${pad(i)}`, rawChat([owner, `${other}${i}`], i * 1000));
+      }),
+    );
+
+  test('55 chats: emits exactly the 50 newest, newest first, oldest 5 absent', async () => {
+    await seed(1, 55);
+    const s = await subscribe('a');
+    await waitFor(() => (s.last()?.length ?? 0) >= CAP, 4000, 'at least 50 chats');
+    await sleep(400);
+    for (const e of s.emissions) expect(e.length).toBeLessThanOrEqual(CAP);
+    const list = s.last();
+    expect(list.length).toBe(CAP);
+    const expectedIds = Array.from({ length: CAP }, (_, k) => `a_c${pad(55 - k)}`);
+    expect(ids(list)).toEqual(expectedIds);
+    for (let i = 1; i <= 5; i++) expect(ids(list)).not.toContain(`a_c${pad(i)}`);
+  }, 15000);
+
+  test('exactly 50 chats: all 50 are emitted', async () => {
+    await seed(1, 50);
+    const s = await subscribe('a');
+    await waitFor(() => (s.last()?.length ?? 0) >= CAP, 4000, '50 chats');
+    await sleep(300);
+    const list = s.last();
+    expect(list.length).toBe(CAP);
+    expect(ids(list)).toEqual(Array.from({ length: CAP }, (_, k) => `a_c${pad(50 - k)}`));
+  }, 15000);
+
+  test('adding a newer 51st chat keeps 50, new chat first, previous oldest dropped', async () => {
+    await seed(1, 50);
+    const s = await subscribe('a');
+    await waitFor(() => (s.last()?.length ?? 0) >= CAP, 4000, 'initial 50 chats');
+    await put('a_c051', rawChat(['a', 'b51'], 51 * 1000));
+    await waitFor(() => ids(s.last())[0] === 'a_c051', 4000, 'new chat first');
+    await sleep(300);
+    const list = s.last();
+    expect(list.length).toBe(CAP);
+    expect(ids(list)[0]).toBe('a_c051');
+    expect(ids(list)).not.toContain('a_c001');
+    expect(ids(list)).toEqual(Array.from({ length: CAP }, (_, k) => `a_c${pad(51 - k)}`));
+  }, 15000);
+
+  test('cap is per query: chats of other users do not count toward it', async () => {
+    await seed(1, 50, 'a', 'b');
+    await seed(51, 60, 'x', 'y'); // 10 newer chats of someone else
+    const s = await subscribe('a');
+    await waitFor(() => (s.last()?.length ?? 0) >= CAP, 4000, '50 own chats');
+    await sleep(300);
+    const list = s.last();
+    expect(list.length).toBe(CAP);
+    expect(ids(list).every((id) => id.startsWith('a_'))).toBe(true);
+    expect(ids(list)).toEqual(Array.from({ length: CAP }, (_, k) => `a_c${pad(50 - k)}`));
+  }, 15000);
+});

@@ -10,6 +10,7 @@ const expected = {
   LAST_MESSAGE_PREVIEW_LENGTH: 200,
   DEFAULT_CHAT_PAGE_SIZE: 20,
   DEFAULT_MESSAGE_PAGE_SIZE: 50,
+  SUBSCRIBED_CHATS_LIMIT: 50,
 };
 
 for (const [name, value] of Object.entries(expected)) {

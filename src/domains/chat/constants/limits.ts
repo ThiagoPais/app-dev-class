@@ -5,3 +5,4 @@ export const MAX_MESSAGE_LENGTH = 2000;
 export const LAST_MESSAGE_PREVIEW_LENGTH = 200;
 export const DEFAULT_CHAT_PAGE_SIZE = 20;
 export const DEFAULT_MESSAGE_PAGE_SIZE = 50;
+export const SUBSCRIBED_CHATS_LIMIT = 50;

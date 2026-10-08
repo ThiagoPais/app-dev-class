@@ -5,6 +5,7 @@ export type ChatErrorCode =
   | 'CHAT_NOT_FOUND'
   | 'CHAT_NOT_PARTICIPANT'
   | 'CHAT_NOT_ADMIN'
+  | 'CHAT_NOT_AUTHOR'
   | 'CHAT_NOT_GROUP'
   | 'CHAT_GROUP_FULL'
   | 'CHAT_GROUP_TOO_SMALL'
