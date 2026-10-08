@@ -1,0 +1,4 @@
+{
+  "emulators": { "firestore": { "port": 8085 } },
+  "firestore": [{ "database": "app-db", "rules": "open.rules" }]
+}
