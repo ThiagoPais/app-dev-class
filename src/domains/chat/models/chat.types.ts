@@ -20,3 +20,15 @@ export interface ConversationMessage {
   text: string;
   sentAt: Date;
 }
+
+/** One row of the user's chat list. */
+export interface ChatSummary {
+  id: string;
+  title: string;
+  avatarUrl: string | null;
+  preview: string;
+  lastMessageAt: Date;
+  unreadCount: number;
+  /** The other person in a direct chat; null for groups. */
+  contact: ChatContact | null;
+}
