@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteField,
   doc,
   FieldPath,
   getDoc,
@@ -25,16 +26,32 @@ import { auth, db } from '@/services/firebase';
 import {
   DEFAULT_CHAT_PAGE_SIZE,
   DEFAULT_MESSAGE_PAGE_SIZE,
+  MAX_GROUP_MEMBERS,
+  MAX_GROUP_NAME_LENGTH,
   MAX_MESSAGE_LENGTH,
+  MIN_GROUP_MEMBERS,
   SUBSCRIBED_CHATS_LIMIT,
 } from '../constants';
-import type { Chat, ChatMessage, OpenDirectChatDTO, SendChatMessageDTO } from '../models';
+import type {
+  AddGroupMembersDTO,
+  Chat,
+  ChatMessage,
+  ChatSystemEventKind,
+  CreateGroupChatDTO,
+  MemberInput,
+  OpenDirectChatDTO,
+  SendChatMessageDTO,
+} from '../models';
 import { ChatError } from '../utils/chat-error';
 import { buildDirectChatId } from '../utils/chat-id';
 import {
+  applyAdminSuccession,
+  assertAdmin,
+  assertGroup,
   assertMember,
   mapDocToChat,
   mapDocToChatMessage,
+  systemMessageData,
   toFirestoreParticipant,
   truncatePreview,
 } from './chat.helpers';
@@ -342,5 +359,229 @@ export async function softDeleteChatMessage(chatId: string, messageId: string): 
         serverTimestamp()
       );
     }
+  });
+}
+
+// ---------- Group chats ----------
+
+/**
+ * Creates a group: the creator is first in `user_ids` (join order) and its only admin.
+ * The `group_created` system message is written in the same batch and never touches the
+ * preview or the unread counters.
+ */
+export async function createGroupChat(dto: CreateGroupChatDTO): Promise<Chat> {
+  const name = dto.name.trim();
+  if (!name || name.length > MAX_GROUP_NAME_LENGTH) throw new ChatError('CHAT_GROUP_NAME_INVALID');
+
+  const { creator } = dto;
+  const others = new Map<string, MemberInput>();
+  for (const member of dto.members) {
+    if (member.userId !== creator.userId && !others.has(member.userId)) {
+      others.set(member.userId, member);
+    }
+  }
+  const members = [creator, ...others.values()];
+  if (members.length < MIN_GROUP_MEMBERS) throw new ChatError('CHAT_GROUP_TOO_SMALL');
+  if (members.length > MAX_GROUP_MEMBERS) throw new ChatError('CHAT_GROUP_FULL');
+
+  const chatRef = doc(collection(db, CHATS_COLLECTION));
+  const chatData = {
+    type: 'group',
+    user_ids: members.map((member) => member.userId),
+    participants: Object.fromEntries(
+      members.map((member) => [member.userId, toFirestoreParticipant(member.profile)])
+    ),
+    name,
+    avatar_url: dto.avatarUrl ?? null,
+    created_by: creator.userId,
+    admin_ids: [creator.userId],
+    last_message: null,
+    unread_counts: Object.fromEntries(members.map((member) => [member.userId, 0])),
+  };
+
+  const batch = writeBatch(db);
+  batch.set(chatRef, {
+    ...chatData,
+    last_message_at: serverTimestamp(),
+    created_at: serverTimestamp(),
+    updated_at: serverTimestamp(),
+  });
+  batch.set(
+    doc(collection(chatRef, MESSAGES_SUBCOLLECTION)),
+    systemMessageData(chatRef.id, 'group_created', creator.userId, [])
+  );
+  await batch.commit();
+
+  // Re-read so the returned chat carries the resolved server timestamps. The group is
+  // already committed, so a failed or empty read must not surface as an error (a retry
+  // would create a duplicate group): fall back to the local copy.
+  const created = await getChat(chatRef.id).catch(() => null);
+  if (created) return created;
+  const now = new Date();
+  return mapDocToChat(chatRef.id, {
+    ...chatData,
+    last_message_at: now,
+    created_at: now,
+    updated_at: now,
+  });
+}
+
+/**
+ * Admin-only. Appends the new members to `user_ids` (join order), adds their participant
+ * snapshot and a zero unread counter, and writes one `member_added` system message.
+ * Members already in the group are ignored; nothing is written if nobody is new.
+ */
+export async function addGroupMembers(dto: AddGroupMembersDTO): Promise<void> {
+  const chatRef = doc(db, CHATS_COLLECTION, dto.chatId);
+
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(chatRef);
+    if (!snap.exists()) throw new ChatError('CHAT_NOT_FOUND');
+    const chat = mapDocToChat(snap.id, snap.data());
+    assertGroup(chat);
+    assertAdmin(chat, dto.actorId);
+
+    const added = new Map<string, MemberInput>();
+    for (const member of dto.members) {
+      if (!chat.userIds.includes(member.userId) && !added.has(member.userId)) {
+        added.set(member.userId, member);
+      }
+    }
+    if (added.size === 0) return;
+    if (chat.userIds.length + added.size > MAX_GROUP_MEMBERS) throw new ChatError('CHAT_GROUP_FULL');
+
+    const newMembers = [...added.values()];
+    const newIds = newMembers.map((member) => member.userId);
+    const memberEntries = newMembers.flatMap((member) => [
+      new FieldPath('participants', member.userId),
+      toFirestoreParticipant(member.profile),
+      new FieldPath('unread_counts', member.userId),
+      0,
+    ]);
+
+    transaction.update(
+      chatRef,
+      'user_ids',
+      [...chat.userIds, ...newIds],
+      'updated_at',
+      serverTimestamp(),
+      ...memberEntries
+    );
+    transaction.set(
+      doc(collection(chatRef, MESSAGES_SUBCOLLECTION)),
+      systemMessageData(chatRef.id, 'member_added', dto.actorId, newIds)
+    );
+  });
+}
+
+/**
+ * Shared body of `removeGroupMember` / `leaveGroupChat`: drops the member from `user_ids`
+ * (order of the others preserved) and `admin_ids`, deletes their participant and unread
+ * entries, and writes the system message(s). If no admin is left while members remain, the
+ * oldest remaining member is promoted in the same transaction (`admin_promoted`).
+ * `authorize` runs on the freshly read group.
+ */
+async function removeMember(
+  chatId: string,
+  actorId: string,
+  targetId: string,
+  kind: Extract<ChatSystemEventKind, 'member_removed' | 'member_left'>,
+  authorize: (chat: Chat) => void
+): Promise<void> {
+  const chatRef = doc(db, CHATS_COLLECTION, chatId);
+
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(chatRef);
+    if (!snap.exists()) throw new ChatError('CHAT_NOT_FOUND');
+    const chat = mapDocToChat(snap.id, snap.data());
+    assertGroup(chat);
+    authorize(chat);
+
+    const userIds = chat.userIds.filter((userId) => userId !== targetId);
+    // Also drops the removed member from the admins; promotes the oldest remaining member
+    // when that leaves the group with members but no admin.
+    const { adminIds, promoted } = applyAdminSuccession(userIds, chat.adminIds);
+
+    transaction.update(
+      chatRef,
+      'user_ids',
+      userIds,
+      'admin_ids',
+      adminIds,
+      new FieldPath('participants', targetId),
+      deleteField(),
+      new FieldPath('unread_counts', targetId),
+      deleteField(),
+      'updated_at',
+      serverTimestamp()
+    );
+    transaction.set(
+      doc(collection(chatRef, MESSAGES_SUBCOLLECTION)),
+      systemMessageData(chatRef.id, kind, actorId, [targetId])
+    );
+    if (promoted) {
+      transaction.set(
+        doc(collection(chatRef, MESSAGES_SUBCOLLECTION)),
+        systemMessageData(chatRef.id, 'admin_promoted', actorId, [promoted])
+      );
+    }
+  });
+}
+
+/** Admin-only. An admin cannot remove themselves: they use `leaveGroupChat`. */
+export async function removeGroupMember(
+  chatId: string,
+  actorId: string,
+  targetId: string
+): Promise<void> {
+  await removeMember(chatId, actorId, targetId, 'member_removed', (chat) => {
+    assertAdmin(chat, actorId);
+    if (targetId === actorId) throw new ChatError('CHAT_SELF_NOT_ALLOWED');
+    assertMember(chat, targetId);
+  });
+}
+
+/** Any member can leave. The last member leaving leaves an empty group in place. */
+export async function leaveGroupChat(chatId: string, userId: string): Promise<void> {
+  await removeMember(chatId, userId, userId, 'member_left', (chat) => assertMember(chat, userId));
+}
+
+/**
+ * Admin-only promote/demote. Demoting the only admin is rejected (`CHAT_LAST_ADMIN`);
+ * promoting an admin or demoting a non-admin is a no-op.
+ */
+export async function setGroupAdmin(
+  chatId: string,
+  actorId: string,
+  targetId: string,
+  isAdmin: boolean
+): Promise<void> {
+  const chatRef = doc(db, CHATS_COLLECTION, chatId);
+
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(chatRef);
+    if (!snap.exists()) throw new ChatError('CHAT_NOT_FOUND');
+    const chat = mapDocToChat(snap.id, snap.data());
+    assertGroup(chat);
+    assertAdmin(chat, actorId);
+    assertMember(chat, targetId);
+
+    if (chat.adminIds.includes(targetId) === isAdmin) return;
+
+    let adminIds: string[];
+    if (isAdmin) {
+      adminIds = [...chat.adminIds, targetId];
+    } else {
+      adminIds = chat.adminIds.filter((userId) => userId !== targetId);
+      if (!adminIds.some((userId) => chat.userIds.includes(userId))) {
+        throw new ChatError('CHAT_LAST_ADMIN');
+      }
+    }
+
+    transaction.update(chatRef, 'admin_ids', adminIds, 'updated_at', serverTimestamp());
+    transaction.set(
+      doc(collection(chatRef, MESSAGES_SUBCOLLECTION)),
+      systemMessageData(chatRef.id, isAdmin ? 'admin_promoted' : 'admin_demoted', actorId, [targetId])
+    );
   });
 }
