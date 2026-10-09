@@ -6,6 +6,7 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   RefreshControl,
   StyleSheet,
   Text,
@@ -13,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { MiniProfileSheet, type ChatContact } from '@/domains/chat';
 import { BrandColors } from '@/shared/constants/colors';
 import { confirmAction, showAlert } from '@/shared/utils/dialogs';
 
@@ -33,6 +35,7 @@ export function TopicDetailScreen({ topicId }: { topicId: string }) {
   const detail = useTopicDetail(topicId);
   const { topic, messages, userId } = detail;
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [profileUser, setProfileUser] = useState<ChatContact | null>(null);
 
   const isAuthor = Boolean(topic && userId && topic.authorId === userId);
   const editingMessage = messages.find((message) => message.id === editingMessageId) ?? null;
@@ -146,7 +149,11 @@ export function TopicDetailScreen({ topicId }: { topicId: string }) {
   const topicHeader = (
     <View>
       <View style={styles.topicCard}>
-        <View style={styles.authorRow}>
+        <Pressable
+          accessibilityHint="Abre o perfil de quem criou o tópico"
+          accessibilityRole="button"
+          onPress={() => setProfileUser({ id: topic.authorId, ...topic.authorSnapshot })}
+          style={styles.authorRow}>
           <AuthorAvatar author={topic.authorSnapshot} size={40} />
           <View style={styles.authorMeta}>
             <Text numberOfLines={1} style={styles.authorName}>
@@ -162,7 +169,7 @@ export function TopicDetailScreen({ topicId }: { topicId: string }) {
               {topic.city}
             </Text>
           </View>
-        </View>
+        </Pressable>
 
         <Text style={styles.topicTitle}>{topic.title}</Text>
         <Text style={styles.topicContent}>{topic.content}</Text>
@@ -218,6 +225,7 @@ export function TopicDetailScreen({ topicId }: { topicId: string }) {
               isBeingEdited={item.id === editingMessageId}
               isOwn={item.authorId === userId}
               message={item}
+              onAuthorPress={() => setProfileUser({ id: item.authorId, ...item.authorSnapshot })}
               onDelete={() => handleDeleteMessage(item.id)}
               onEdit={() => setEditingMessageId(item.id)}
               onVote={(voteType) => handleMessageVote(item.id, voteType)}
@@ -243,6 +251,8 @@ export function TopicDetailScreen({ topicId }: { topicId: string }) {
           />
         )}
       </KeyboardAvoidingView>
+
+      <MiniProfileSheet onClose={() => setProfileUser(null)} participant={profileUser} />
     </SafeAreaView>
   );
 }
