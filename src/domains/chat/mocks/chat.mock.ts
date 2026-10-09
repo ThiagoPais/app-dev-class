@@ -1,8 +1,7 @@
 /**
- * Placeholder data for the mini profile and chat screens until the real
- * profile fields and the WebSocket conversation backend exist.
+ * Placeholder data for the mini profile until the real profile fields exist.
  */
-import type { ConversationMessage, ChatContact, MiniProfile } from '../models/chat.types';
+import type { ChatContact, MiniProfile } from '../models/chat.types';
 
 const LOREM = [
   'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
@@ -31,27 +30,4 @@ export function getMockMiniProfile(participant: ChatContact): MiniProfile {
     topicsCount: seed % 12,
     repliesCount: (seed % 40) + 3,
   };
-}
-
-export function getMockConversation(otherId: string, myId: string): ConversationMessage[] {
-  const start = Date.now() - 1000 * 60 * 90;
-  const lines = [
-    { from: otherId, text: 'Oi! Lorem ipsum dolor sit amet?' },
-    { from: myId, text: 'Oi, tudo bem? Consectetur adipiscing elit, sed do eiusmod.' },
-    { from: otherId, text: LOREM[1] },
-    { from: otherId, text: LOREM[2] },
-    { from: myId, text: 'Duis aute irure dolor in reprehenderit 😄' },
-    { from: otherId, text: LOREM[4] },
-  ];
-
-  return lines.map((line, index) => ({
-    id: `mock-${index}`,
-    senderId: line.from,
-    text: line.text,
-    sentAt: new Date(start + index * 1000 * 60 * 7),
-  }));
-}
-
-export function getMockReply(): string {
-  return LOREM[Math.floor(Math.random() * LOREM.length)];
 }
