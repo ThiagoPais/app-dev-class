@@ -206,5 +206,139 @@ service cloud.firestore {
         }
       }
     }
+
+    // ---------- Chat ----------
+    // Direct and group chats live in `chats`; messages in `chats/{id}/chat_messages`.
+    // Nothing is hard-deleted by clients (soft delete only). The rules cannot check that
+    // `last_message` or the unread counters match the real messages: members are trusted
+    // to write them through the service layer.
+
+    function chatPath(chatId) {
+      return /databases/$(database)/documents/chats/$(chatId);
+    }
+
+    // Membership uses the chat as it was BEFORE the write, so a member who leaves can
+    // still write their own `member_left` message in the same batch.
+    function isChatMember(chatId) {
+      return isAuthenticated()
+        && request.auth.uid in get(chatPath(chatId)).data.user_ids;
+    }
+
+    function isSystemMessageBy(uid) {
+      return request.resource.data.type == 'system'
+        && request.resource.data.author_id == null
+        && request.resource.data.system_event.actor_id == uid;
+    }
+
+    // The `group_created` message is written in the same batch as the group itself, when
+    // the chat does not exist yet (so `isChatMember` has nothing to read).
+    function isGroupCreatedMessage(chatId) {
+      return isSystemMessageBy(request.auth.uid)
+        && request.resource.data.system_event.kind == 'group_created'
+        && !exists(chatPath(chatId))
+        && existsAfter(chatPath(chatId))
+        && getAfter(chatPath(chatId)).data.created_by == request.auth.uid;
+    }
+
+    // Admins after a member leaves: unchanged minus the leaver, except that when the leaver
+    // was the only admin and members remain, exactly the oldest remaining member is promoted
+    // (what the service does). A leaver cannot otherwise grant or revoke admin rights.
+    function adminsAfterLeaving() {
+      let remaining = resource.data.admin_ids.removeAll([request.auth.uid]);
+      let members = request.resource.data.user_ids;
+      return (remaining.size() > 0 && request.resource.data.admin_ids == remaining)
+        || (remaining.size() == 0 && members.size() == 0 && request.resource.data.admin_ids == [])
+        || (remaining.size() == 0 && members.size() > 0
+          && request.resource.data.admin_ids == [members[0]]);
+    }
+
+    match /chats/{chatId} {
+      // A missing chat is readable so the app can tell "no chat yet" from "not allowed".
+      allow read: if isAuthenticated()
+        && (resource == null || request.auth.uid in resource.data.user_ids);
+
+      allow create: if isAuthenticated()
+        && request.auth.uid in request.resource.data.user_ids && (
+          // Direct chat: canonical sorted ID, immutable pair
+          (request.resource.data.type == 'direct'
+            && request.resource.data.user_ids.size() == 2
+            && request.resource.data.user_ids[0] < request.resource.data.user_ids[1]
+            && chatId == request.resource.data.user_ids[0] + '_' + request.resource.data.user_ids[1]
+            && request.resource.data.admin_ids.size() == 0
+            && request.resource.data.last_message == null)
+          ||
+          // Group chat: creator first and sole admin, 2-100 members
+          (request.resource.data.type == 'group'
+            && request.resource.data.user_ids.size() >= 2
+            && request.resource.data.user_ids.size() <= 100
+            && request.resource.data.user_ids[0] == request.auth.uid
+            && request.resource.data.admin_ids == [request.auth.uid]
+            && request.resource.data.created_by == request.auth.uid
+            && request.resource.data.name is string
+            && request.resource.data.name.size() >= 1
+            && request.resource.data.name.size() <= 60
+            && request.resource.data.last_message == null)
+        );
+
+      allow update: if isAuthenticated()
+        && request.auth.uid in resource.data.user_ids
+        && request.resource.data.type == resource.data.type
+        && (
+          // (a) Any member: preview and counters only
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['last_message', 'last_message_at', 'unread_counts', 'updated_at'])
+          ||
+          // (b) Group admin: membership, roles and group info. The admin must remain a
+          // member: an admin leaving the group goes through (c) like everyone else.
+          (resource.data.type == 'group'
+            && request.auth.uid in resource.data.admin_ids
+            && request.auth.uid in request.resource.data.user_ids
+            && request.resource.data.user_ids.size() <= 100
+            && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['user_ids', 'admin_ids', 'participants', 'unread_counts', 'name',
+                'avatar_url', 'updated_at']))
+          ||
+          // (c) Group member leaving: may only remove themselves, touch their own
+          // participant/unread entries, and (see adminsAfterLeaving) trigger succession
+          (resource.data.type == 'group'
+            && request.resource.data.user_ids == resource.data.user_ids.removeAll([request.auth.uid])
+            && adminsAfterLeaving()
+            && request.resource.data.participants.diff(resource.data.participants)
+              .affectedKeys().hasOnly([request.auth.uid])
+            && request.resource.data.unread_counts.diff(resource.data.unread_counts)
+              .affectedKeys().hasOnly([request.auth.uid])
+            && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['user_ids', 'admin_ids', 'participants', 'unread_counts', 'updated_at']))
+        );
+
+      allow delete: if false;
+
+      match /chat_messages/{messageId} {
+        allow read: if isChatMember(chatId);
+
+        allow create: if isAuthenticated()
+          && request.resource.data.chat_id == chatId
+          && request.resource.data.is_deleted == false
+          && (
+            (isChatMember(chatId) && (
+              (request.resource.data.type == 'text'
+                && request.resource.data.author_id == request.auth.uid
+                && request.resource.data.message is string
+                && request.resource.data.message.size() >= 1
+                && request.resource.data.message.size() <= 2000)
+              || isSystemMessageBy(request.auth.uid)))
+            || isGroupCreatedMessage(chatId)
+          );
+
+        // Authors may only edit the body or soft-delete their own text message
+        allow update: if isChatMember(chatId)
+          && resource.data.type == 'text'
+          && resource.data.author_id == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['message', 'updated_at', 'is_deleted']);
+
+        allow delete: if false;
+      }
+    }
   }
 }

@@ -14,7 +14,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Spacing } from '@/constants/theme';
-import { MiniProfileSheet, type ChatParticipant } from '@/domains/chat';
+import { MiniProfileSheet, type ChatContact } from '@/domains/chat';
 import { BrandColors } from '@/shared/constants/colors';
 
 import { CategoryChips } from '../components/category-chips';
@@ -46,7 +46,7 @@ export function CityForumScreen({ city }: { city: string }) {
 function CityForum({ city }: { city: string }) {
   const { bottom } = useSafeAreaInsets();
   const [category, setCategory] = useState<ForumCategory | null>(null);
-  const [profileUser, setProfileUser] = useState<ChatParticipant | null>(null);
+  const [profileUser, setProfileUser] = useState<ChatContact | null>(null);
   const {
     topics,
     hasTopics,

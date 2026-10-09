@@ -49,6 +49,9 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
+    "test:chat": "bun test tests/chat-limits.test.js tests/chat-id.test.js tests/chat-helpers.test.js tests/chat-guards.test.js tests/chat-system-succession.test.js tests/chat-indexes.test.js",
+    "test:chat:emulator": "npx -y firebase-tools emulators:exec --config tests/chat/firebase.test.json --only firestore --project demo-chat \"bun test tests/chat-emulator\"",
+    "test:chat:rules": "npx -y firebase-tools emulators:exec --only firestore --project demo-chat-rules \"node --import ./tests/rules/register.mjs --test tests/rules/chat-rules.test.mjs\"",
     "test:forum": "bun test tests/forum-ui.test.js",
     "test:forum:emulator": "bun test tests/forum-pagination.test.js",
     "test:rules": "npx -y firebase-tools emulators:exec --only firestore --project demo-forum-rules \"node --import ./tests/rules/register.mjs --test tests/rules/forum-rules.test.mjs\""
