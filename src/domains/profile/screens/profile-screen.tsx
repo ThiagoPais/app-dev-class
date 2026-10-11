@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { router, type Href } from 'expo-router';
 import { useCallback } from 'react';
 import {
   ActivityIndicator,
@@ -23,7 +24,12 @@ interface MenuItem {
   icon: IoniconName;
   label: string;
   tone?: 'default' | 'danger';
+  href?: Href;
 }
+
+const chatItems: MenuItem[] = [
+  { icon: 'chatbubbles-outline', label: 'Minhas conversas', href: '/chat' },
+];
 
 const preferenceItems: MenuItem[] = [
   { icon: 'notifications-outline', label: 'Notificações' },
@@ -57,6 +63,11 @@ function MenuSection({
 }) {
   const handlePress = useCallback(
     (item: MenuItem) => {
+      if (item.href) {
+        router.push(item.href);
+        return;
+      }
+
       if (item.tone === 'danger') {
         onLogout?.();
         return;
@@ -181,6 +192,7 @@ export function ProfileScreen() {
             </View>
           </Pressable>
 
+          <MenuSection items={chatItems} label="Conversas" />
           <MenuSection items={preferenceItems} label="Preferências" />
           <MenuSection items={accountItems} label="Conta" onLogout={handleLogout} />
         </View>

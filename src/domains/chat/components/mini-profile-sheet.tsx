@@ -8,11 +8,11 @@ import { AppButton, UserAvatar } from '@/shared/components/ui';
 import { BrandColors } from '@/shared/constants/colors';
 
 import { getMockMiniProfile } from '../mocks/chat.mock';
-import type { ChatParticipant } from '../models/chat.types';
+import type { ChatContact } from '../models/chat.types';
 
 interface MiniProfileSheetProps {
   /** Person to show; the sheet is hidden while null. */
-  participant: ChatParticipant | null;
+  participant: ChatContact | null;
   onClose: () => void;
 }
 

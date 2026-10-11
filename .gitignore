@@ -37,6 +37,7 @@ ui-debug.log
 .env*.local
 .env
 functions/.env*
+doc/
 
 # typescript
 *.tsbuildinfo

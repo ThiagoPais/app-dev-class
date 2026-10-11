@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -13,12 +14,13 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useAuth } from '@/domains/auth';
-import { UserAvatar } from '@/shared/components/ui';
+import { AppButton, UserAvatar } from '@/shared/components/ui';
 import { BrandColors } from '@/shared/constants/colors';
+import { showAlert } from '@/shared/utils/dialogs';
 
-import { useMockChat } from '../hooks/use-mock-chat';
-import type { ChatMessage, ChatParticipant } from '../models/chat.types';
+import { MAX_MESSAGE_LENGTH } from '../constants';
+import { useDirectChat } from '../hooks/use-direct-chat';
+import type { ChatContact, ConversationMessage } from '../models/chat.types';
 
 function formatTime(date: Date): string {
   return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -29,22 +31,34 @@ function goBack() {
   else router.replace('/(logged)/(tabs)/forum');
 }
 
-/**
- * One-to-one conversation screen. Mocked for now: messages live in memory
- * (useMockChat) until the WebSocket backend is ready.
- */
-export function ChatScreen({ participant }: { participant: ChatParticipant }) {
+/** One-to-one conversation screen backed by the chat service. */
+export function ChatScreen({ participant }: { participant: ChatContact }) {
   const { bottom } = useSafeAreaInsets();
-  const { user } = useAuth();
-  const myId = user?.id ?? 'me';
-  const { messages, isOtherTyping, send } = useMockChat(participant.id, myId);
+  const chat = useDirectChat(participant);
   const [text, setText] = useState('');
-  const listRef = useRef<FlatList<ChatMessage>>(null);
+  const listRef = useRef<FlatList<ConversationMessage>>(null);
+  const scrolledToId = useRef<string | null>(null);
+  const canSend = chat.canSend && Boolean(text.trim());
 
-  const handleSend = () => {
-    if (!text.trim()) return;
-    send(text);
+  const handleSend = async () => {
+    if (!canSend) return;
+    const draft = text;
     setText('');
+    try {
+      await chat.send(draft);
+    } catch (error) {
+      console.warn('[chat] Failed to send message:', error);
+      setText((current) => current || draft);
+      showAlert('Não foi possível enviar a mensagem.', 'Tente novamente.');
+    }
+  };
+
+  // Only follow new messages; loading older ones must not jump to the bottom.
+  const scrollToNewest = () => {
+    const newestId = chat.messages.at(-1)?.id ?? null;
+    if (!newestId || newestId === scrolledToId.current) return;
+    listRef.current?.scrollToEnd({ animated: scrolledToId.current !== null });
+    scrolledToId.current = newestId;
   };
 
   return (
@@ -59,35 +73,49 @@ export function ChatScreen({ participant }: { participant: ChatParticipant }) {
           <Ionicons color={BrandColors.white} name="arrow-back" size={20} />
         </Pressable>
         <UserAvatar avatarUrl={participant.avatarUrl} name={participant.fullName} size={38} />
-        <View style={styles.headerText}>
-          <Text numberOfLines={1} style={styles.headerName}>
-            {participant.fullName || 'Usuário'}
-          </Text>
-          <Text style={styles.headerStatus}>{isOtherTyping ? 'digitando...' : 'online'}</Text>
-        </View>
-      </View>
-
-      <View style={styles.mockBanner}>
-        <Ionicons color={BrandColors.textSecondary} name="construct-outline" size={13} />
-        <Text style={styles.mockText}>Prévia: as mensagens ainda não são enviadas de verdade.</Text>
+        <Text numberOfLines={1} style={styles.headerName}>
+          {participant.fullName || 'Usuário'}
+        </Text>
       </View>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.flex}>
-        <FlatList
-          contentContainerStyle={styles.list}
-          data={messages}
-          keyExtractor={(message) => message.id}
-          keyboardShouldPersistTaps="handled"
-          onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
-          ref={listRef}
-          renderItem={({ item }) => <Bubble isMine={item.senderId === myId} message={item} />}
-          style={styles.flex}
-        />
+        {chat.isLoading ? (
+          <View style={styles.centered}>
+            <ActivityIndicator color={BrandColors.primary} />
+          </View>
+        ) : chat.errorMessage ? (
+          <View style={styles.centered}>
+            <Text style={styles.stateText}>{chat.errorMessage}</Text>
+            <AppButton onPress={chat.retry} title="Tentar novamente" />
+          </View>
+        ) : (
+          <FlatList
+            ListEmptyComponent={
+              <Text style={styles.stateText}>
+                Envie a primeira mensagem para {participant.fullName || 'este usuário'}.
+              </Text>
+            }
+            ListHeaderComponent={
+              chat.hasMore ? (
+                <OlderMessagesButton isLoading={chat.isLoadingMore} onPress={chat.loadMore} />
+              ) : null
+            }
+            contentContainerStyle={styles.list}
+            data={chat.messages}
+            keyExtractor={(message) => message.id}
+            keyboardShouldPersistTaps="handled"
+            onContentSizeChange={scrollToNewest}
+            ref={listRef}
+            renderItem={({ item }) => <Bubble isMine={item.senderId === chat.myId} message={item} />}
+            style={styles.flex}
+          />
+        )}
 
         <View style={[styles.composer, { paddingBottom: Math.max(bottom, 10) }]}>
           <TextInput
+            maxLength={MAX_MESSAGE_LENGTH}
             multiline
             onChangeText={setText}
             placeholder="Escreva uma mensagem..."
@@ -98,11 +126,11 @@ export function ChatScreen({ participant }: { participant: ChatParticipant }) {
           <Pressable
             accessibilityLabel="Enviar mensagem"
             accessibilityRole="button"
-            disabled={!text.trim()}
+            disabled={!canSend}
             onPress={handleSend}
             style={({ pressed }) => [
               styles.send,
-              !text.trim() && styles.sendDisabled,
+              !canSend && styles.sendDisabled,
               pressed && styles.pressed,
             ]}>
             <Ionicons color={BrandColors.white} name="send" size={18} />
@@ -113,7 +141,20 @@ export function ChatScreen({ participant }: { participant: ChatParticipant }) {
   );
 }
 
-function Bubble({ message, isMine }: { message: ChatMessage; isMine: boolean }) {
+function OlderMessagesButton({ isLoading, onPress }: { isLoading: boolean; onPress: () => void }) {
+  if (isLoading) return <ActivityIndicator color={BrandColors.primary} style={styles.older} />;
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.older, pressed && styles.pressed]}>
+      <Text style={styles.olderText}>Carregar mensagens anteriores</Text>
+    </Pressable>
+  );
+}
+
+function Bubble({ message, isMine }: { message: ConversationMessage; isMine: boolean }) {
   return (
     <View style={[styles.bubbleRow, isMine && styles.bubbleRowMine]}>
       <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleOther]}>
@@ -155,33 +196,38 @@ const styles = StyleSheet.create({
     borderRadius: 17,
     backgroundColor: '#78951A',
   },
-  headerText: {
-    flex: 1,
-  },
   headerName: {
+    flex: 1,
     color: BrandColors.textPrimary,
     fontSize: 16,
     fontWeight: '700',
   },
-  headerStatus: {
-    color: '#2E9E5B',
-    fontSize: 12,
-  },
-  mockBanner: {
-    flexDirection: 'row',
+  centered: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 6,
-    backgroundColor: '#F5F0F2',
+    gap: 16,
+    padding: 24,
   },
-  mockText: {
+  stateText: {
     color: BrandColors.textSecondary,
-    fontSize: 11,
+    fontSize: 14,
+    textAlign: 'center',
   },
   list: {
+    flexGrow: 1,
     gap: 8,
     padding: 16,
+  },
+  older: {
+    alignSelf: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  olderText: {
+    color: BrandColors.primary,
+    fontSize: 13,
+    fontWeight: '600',
   },
   bubbleRow: {
     flexDirection: 'row',

@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { MiniProfileSheet, type ChatParticipant } from '@/domains/chat';
+import { MiniProfileSheet, type ChatContact } from '@/domains/chat';
 import { BrandColors } from '@/shared/constants/colors';
 import { confirmAction, showAlert } from '@/shared/utils/dialogs';
 
@@ -35,7 +35,7 @@ export function TopicDetailScreen({ topicId }: { topicId: string }) {
   const detail = useTopicDetail(topicId);
   const { topic, messages, userId } = detail;
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
-  const [profileUser, setProfileUser] = useState<ChatParticipant | null>(null);
+  const [profileUser, setProfileUser] = useState<ChatContact | null>(null);
 
   const isAuthor = Boolean(topic && userId && topic.authorId === userId);
   const editingMessage = messages.find((message) => message.id === editingMessageId) ?? null;
