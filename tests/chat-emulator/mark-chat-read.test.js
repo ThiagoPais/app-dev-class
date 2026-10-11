@@ -153,7 +153,14 @@ describe('markChatAsRead', () => {
   test('rejects when the chat does not exist and creates no document', async () => {
     const service = await loadChatService();
     expect(typeof service.markChatAsRead).toBe('function');
-    await expect(markChatAsRead('ghost_chat', 'alice')).rejects.toBeDefined();
+    // `.rejects` on a Firestore-bound promise deadlocks under bun: await first.
+    let error;
+    try {
+      await markChatAsRead('ghost_chat', 'alice');
+    } catch (e) {
+      error = e;
+    }
+    expect(error).toBeInstanceOf(Error);
     expect(await raw('ghost_chat')).toBeNull();
   });
 

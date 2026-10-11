@@ -140,7 +140,7 @@ async function expectChange(id, data, kind, actorId, targetId, expectedAdmins) {
 describe('setGroupAdmin promote (spec 3.2, AC#5)', () => {
   test('admin promotes a plain member: appended, admin_promoted message, updated_at bumped', async () => {
     const { id, data } = await seedGroup({ userIds: ['a', 'b', 'c'], adminIds: ['a'] });
-    await expect(setAdmin(id, 'a', 'b', true)).resolves.toBeUndefined();
+    expect(await setAdmin(id, 'a', 'b', true)).toBeUndefined();
     await expectChange(id, data, 'admin_promoted', 'a', 'b', ['a', 'b']);
   });
 
@@ -254,19 +254,19 @@ describe('setGroupAdmin rejections write nothing', () => {
 describe('setGroupAdmin no-ops (no writes)', () => {
   test('promoting someone who is already an admin', async () => {
     const { id, data } = await seedGroup({ userIds: ['a', 'b', 'c'], adminIds: ['a', 'b'] });
-    await expect(setAdmin(id, 'a', 'b', true)).resolves.toBeUndefined();
+    expect(await setAdmin(id, 'a', 'b', true)).toBeUndefined();
     await expectUntouched(id, data);
   });
 
   test('promoting yourself when already admin', async () => {
     const { id, data } = await seedGroup({ userIds: ['a', 'b'], adminIds: ['a'] });
-    await expect(setAdmin(id, 'a', 'a', true)).resolves.toBeUndefined();
+    expect(await setAdmin(id, 'a', 'a', true)).toBeUndefined();
     await expectUntouched(id, data);
   });
 
   test('demoting a member who is not an admin (even with a sole admin actor)', async () => {
     const { id, data } = await seedGroup({ userIds: ['a', 'b', 'c'], adminIds: ['a'] });
-    await expect(setAdmin(id, 'a', 'b', false)).resolves.toBeUndefined();
+    expect(await setAdmin(id, 'a', 'b', false)).toBeUndefined();
     await expectUntouched(id, data);
   });
 });

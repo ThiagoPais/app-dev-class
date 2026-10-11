@@ -41,6 +41,7 @@ import type {
   MemberInput,
   OpenDirectChatDTO,
   SendChatMessageDTO,
+  UpdateGroupInfoDTO,
 } from '../models';
 import { ChatError } from '../utils/chat-error';
 import { buildDirectChatId } from '../utils/chat-id';
@@ -583,5 +584,43 @@ export async function setGroupAdmin(
       doc(collection(chatRef, MESSAGES_SUBCOLLECTION)),
       systemMessageData(chatRef.id, isAdmin ? 'admin_promoted' : 'admin_demoted', actorId, [targetId])
     );
+  });
+}
+
+/**
+ * Admin-only. Updates the group name and/or picture (`avatarUrl: null` clears it,
+ * `undefined` leaves it). A rename writes a `group_renamed` system message; a picture-only
+ * change does not. Nothing is written if no value actually changes.
+ */
+export async function updateGroupInfo(dto: UpdateGroupInfoDTO): Promise<void> {
+  const name = dto.name?.trim();
+  if (name !== undefined && (!name || name.length > MAX_GROUP_NAME_LENGTH)) {
+    throw new ChatError('CHAT_GROUP_NAME_INVALID');
+  }
+
+  const chatRef = doc(db, CHATS_COLLECTION, dto.chatId);
+
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(chatRef);
+    if (!snap.exists()) throw new ChatError('CHAT_NOT_FOUND');
+    const chat = mapDocToChat(snap.id, snap.data());
+    assertGroup(chat);
+    assertAdmin(chat, dto.actorId);
+
+    const renamed = name !== undefined && name !== chat.name;
+    const avatarChanged = dto.avatarUrl !== undefined && dto.avatarUrl !== chat.avatarUrl;
+    if (!renamed && !avatarChanged) return;
+
+    const changes: unknown[] = [];
+    if (renamed) changes.push('name', name);
+    if (avatarChanged) changes.push('avatar_url', dto.avatarUrl);
+    transaction.update(chatRef, 'updated_at', serverTimestamp(), ...changes);
+
+    if (renamed) {
+      transaction.set(
+        doc(collection(chatRef, MESSAGES_SUBCOLLECTION)),
+        systemMessageData(chatRef.id, 'group_renamed', dto.actorId, [])
+      );
+    }
   });
 }

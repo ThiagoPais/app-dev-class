@@ -224,10 +224,67 @@ service cloud.firestore {
         && request.auth.uid in get(chatPath(chatId)).data.user_ids;
     }
 
+    // Exact key set of every chat message (text or system): nothing extra, nothing missing.
+    function messageHasExactKeys() {
+      return request.resource.data.keys().hasOnly(['chat_id', 'type', 'author_id',
+          'author_snapshot', 'message', 'system_event', 'is_deleted', 'created_at', 'updated_at'])
+        && request.resource.data.keys().hasAll(['chat_id', 'type', 'author_id',
+          'author_snapshot', 'message', 'system_event', 'is_deleted', 'created_at', 'updated_at']);
+    }
+
+    // Timestamps are always the server's: a client cannot back- or post-date a message.
+    function messageTimesAreServer() {
+      return request.resource.data.created_at == request.time
+        && request.resource.data.updated_at == request.time;
+    }
+
+    // Text message: own author id, no system event, and a display name that matches the
+    // author's profile (the same check the forum rules make), so names cannot be forged.
+    function isTextMessageBy(uid) {
+      return request.resource.data.type == 'text'
+        && request.resource.data.author_id == uid
+        && request.resource.data.system_event == null
+        && request.resource.data.message is string
+        && request.resource.data.message.size() >= 1
+        && request.resource.data.message.size() <= 2000
+        && request.resource.data.author_snapshot.full_name
+          == get(/databases/$(database)/documents/users/$(uid)).data.fullName;
+    }
+
+    // System message shape: no author, no body, a whitelisted kind and an exact event map.
     function isSystemMessageBy(uid) {
       return request.resource.data.type == 'system'
         && request.resource.data.author_id == null
+        && request.resource.data.author_snapshot == null
+        && request.resource.data.message == null
+        && request.resource.data.system_event.keys().hasOnly(['kind', 'actor_id', 'target_ids'])
+        && request.resource.data.system_event.keys().hasAll(['kind', 'actor_id', 'target_ids'])
+        && request.resource.data.system_event.kind in ['group_created', 'member_added',
+          'member_removed', 'member_left', 'admin_promoted', 'admin_demoted', 'group_renamed']
+        && request.resource.data.system_event.target_ids is list
         && request.resource.data.system_event.actor_id == uid;
+    }
+
+    // A member may only announce their OWN departure, and only in the batch that really
+    // removes them from `user_ids`.
+    function isMemberLeftBy(chatId, uid) {
+      return request.resource.data.system_event.kind == 'member_left'
+        && request.resource.data.system_event.target_ids == [uid]
+        && !(uid in getAfter(chatPath(chatId)).data.user_ids);
+    }
+
+    // Every other event kind is an admin action. The admin is checked against the chat
+    // BEFORE the write, so a sole admin leaving can still record `admin_promoted`.
+    function isAdminSystemMessageBy(chatId, uid) {
+      return request.resource.data.system_event.kind in ['member_added', 'member_removed',
+          'admin_promoted', 'admin_demoted', 'group_renamed']
+        && uid in get(chatPath(chatId)).data.admin_ids;
+    }
+
+    function isMemberSystemMessage(chatId) {
+      return isSystemMessageBy(request.auth.uid)
+        && (isMemberLeftBy(chatId, request.auth.uid)
+          || isAdminSystemMessageBy(chatId, request.auth.uid));
     }
 
     // The `group_created` message is written in the same batch as the group itself, when
@@ -265,12 +322,17 @@ service cloud.firestore {
             && request.resource.data.user_ids[0] < request.resource.data.user_ids[1]
             && chatId == request.resource.data.user_ids[0] + '_' + request.resource.data.user_ids[1]
             && request.resource.data.admin_ids.size() == 0
+            && request.resource.data.name == null
+            && request.resource.data.created_by == null
+            && request.resource.data.participants.keys().hasOnly(request.resource.data.user_ids)
+            && request.resource.data.participants.keys().hasAll(request.resource.data.user_ids)
             && request.resource.data.last_message == null)
           ||
           // Group chat: creator first and sole admin, 2-100 members
           (request.resource.data.type == 'group'
             && request.resource.data.user_ids.size() >= 2
             && request.resource.data.user_ids.size() <= 100
+            && request.resource.data.user_ids.toSet().size() == request.resource.data.user_ids.size()
             && request.resource.data.user_ids[0] == request.auth.uid
             && request.resource.data.admin_ids == [request.auth.uid]
             && request.resource.data.created_by == request.auth.uid
@@ -294,6 +356,11 @@ service cloud.firestore {
             && request.auth.uid in resource.data.admin_ids
             && request.auth.uid in request.resource.data.user_ids
             && request.resource.data.user_ids.size() <= 100
+            && request.resource.data.user_ids.toSet().size() == request.resource.data.user_ids.size()
+            && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['name'])
+              || (request.resource.data.name is string
+                && request.resource.data.name.size() >= 1
+                && request.resource.data.name.size() <= 60))
             && request.resource.data.diff(resource.data).affectedKeys()
               .hasOnly(['user_ids', 'admin_ids', 'participants', 'unread_counts', 'name',
                 'avatar_url', 'updated_at']))
@@ -319,14 +386,11 @@ service cloud.firestore {
         allow create: if isAuthenticated()
           && request.resource.data.chat_id == chatId
           && request.resource.data.is_deleted == false
+          && messageHasExactKeys()
+          && messageTimesAreServer()
           && (
             (isChatMember(chatId) && (
-              (request.resource.data.type == 'text'
-                && request.resource.data.author_id == request.auth.uid
-                && request.resource.data.message is string
-                && request.resource.data.message.size() >= 1
-                && request.resource.data.message.size() <= 2000)
-              || isSystemMessageBy(request.auth.uid)))
+              isTextMessageBy(request.auth.uid) || isMemberSystemMessage(chatId)))
             || isGroupCreatedMessage(chatId)
           );
 
