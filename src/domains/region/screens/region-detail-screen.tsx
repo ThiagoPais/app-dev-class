@@ -7,13 +7,13 @@ import { UserAvatar } from '@/shared/components/ui';
 import { BrandColors } from '@/shared/constants/colors';
 
 import { DF_CENTER, REGION_COORDINATES } from '../constants';
+import { IncomeChart } from '../components/income-chart';
 import { RegionCard } from '../components/region-card';
 import { RegionMap } from '../components/region-map';
 import { SafetyChart } from '../components/safety-chart';
 import { REGION_DETAILS_MOCK } from '../mocks/region.mock';
 
 const PHOTO_COLORS = ['#9FB1A0', '#D9C77A', '#7FA3B8'];
-const INCOME_CHART_HEIGHT = 80;
 
 function goBack() {
   if (router.canGoBack()) router.back();
@@ -24,7 +24,6 @@ function goBack() {
 export function RegionDetailScreen({ city }: { city: string }) {
   const { bottom } = useSafeAreaInsets();
   const details = REGION_DETAILS_MOCK;
-  const bestIncome = Math.max(...details.income.bars.map((bar) => bar.value));
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
@@ -120,18 +119,7 @@ export function RegionDetailScreen({ city }: { city: string }) {
 
         <RegionCard title="Rendimento domiciliar">
           <Text style={styles.smallText}>{details.income.summary}</Text>
-          <View style={styles.incomeChart}>
-            {details.income.bars.map((bar, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.incomeBar,
-                  { height: (bar.value / bestIncome) * INCOME_CHART_HEIGHT },
-                  bar.highlighted && styles.incomeBarHighlighted,
-                ]}
-              />
-            ))}
-          </View>
+          <IncomeChart bars={details.income.bars} />
           <Text style={styles.source}>{details.income.source}</Text>
         </RegionCard>
 
@@ -325,21 +313,6 @@ const styles = StyleSheet.create({
   fill: {
     height: 3,
     borderRadius: 2,
-    backgroundColor: BrandColors.primary,
-  },
-  incomeChart: {
-    height: INCOME_CHART_HEIGHT,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 3,
-  },
-  incomeBar: {
-    flex: 1,
-    borderTopLeftRadius: 2,
-    borderTopRightRadius: 2,
-    backgroundColor: '#D9D9D9',
-  },
-  incomeBarHighlighted: {
     backgroundColor: BrandColors.primary,
   },
   postHeader: {

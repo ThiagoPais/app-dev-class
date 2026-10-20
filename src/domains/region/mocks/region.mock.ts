@@ -16,7 +16,7 @@ export interface RegionDetails {
   income: {
     summary: string;
     /** Bars of the income distribution; `highlighted` marks this region. */
-    bars: { value: number; highlighted?: boolean }[];
+    bars: { label: string; value: number; highlighted?: boolean }[];
     source: string;
   };
   safety: {
@@ -65,24 +65,24 @@ export const REGION_DETAILS_MOCK: RegionDetails = {
     summary:
       'Comparado às demais RAs do DF, o Núcleo Bandeirante está na faixa de renda média-alta. A renda domiciliar média mensal gira em torno de R$ 5.486,00 (maior parte dos domicílios concentram mais de 2 a 5 salários mínimos).',
     bars: [
-      { value: 48 },
-      { value: 52 },
-      { value: 50 },
-      { value: 58 },
-      { value: 60 },
-      { value: 64 },
-      { value: 68 },
-      { value: 74, highlighted: true },
-      { value: 80 },
-      { value: 86 },
-      { value: 92 },
-      { value: 100 },
+      { label: 'Até 1', value: 48 },
+      { label: '1–2', value: 52 },
+      { label: '2–3', value: 50 },
+      { label: '3–4', value: 58 },
+      { label: '4–5', value: 60 },
+      { label: '5–6', value: 64 },
+      { label: '6–8', value: 68 },
+      { label: '8–10', value: 74, highlighted: true },
+      { label: '10–12', value: 80 },
+      { label: '12–15', value: 86 },
+      { label: '15–20', value: 92 },
+      { label: '20+', value: 100 },
     ],
     source: 'PDAD 2024',
   },
   safety: {
     series: [
-      { label: 'Homicídios', value: 4 },
+      { label: 'Homicídio', value: 4 },
       { label: 'Roubo a transeunte', value: 12 },
       { label: 'Furto em veículo', value: 112 },
       { label: 'Roubo de veículo', value: 8 },
