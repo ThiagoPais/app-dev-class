@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useTopCityTopics } from '@/domains/forum';
 import { UserAvatar } from '@/shared/components/ui';
 import { BrandColors } from '@/shared/constants/colors';
 
@@ -24,6 +25,11 @@ function goBack() {
 export function RegionDetailScreen({ city }: { city: string }) {
   const { bottom } = useSafeAreaInsets();
   const details = REGION_DETAILS_MOCK;
+  const {
+    topics: topTopics,
+    isLoading: isLoadingTopics,
+    errorMessage: topicsError,
+  } = useTopCityTopics(city);
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
@@ -132,16 +138,40 @@ export function RegionDetailScreen({ city }: { city: string }) {
         <RegionMap city={city} coordinates={REGION_COORDINATES[city] ?? DF_CENTER} />
 
         <Text style={styles.sectionTitle}>Destaques do fórum</Text>
-        {details.forumHighlights.map((post) => (
-          <RegionCard key={post.id}>
-            <View style={styles.postHeader}>
-              <UserAvatar avatarUrl={null} name={post.author} size={26} />
-              <Text style={styles.postAuthor}>{post.author}</Text>
-              <Ionicons color={BrandColors.textMuted} name="heart-outline" size={12} />
-              <Text style={styles.postLikes}>{post.likes}</Text>
-            </View>
-            <Text style={styles.postText}>{post.text}</Text>
-          </RegionCard>
+        {isLoadingTopics ? <ActivityIndicator color={BrandColors.primary} /> : null}
+        {topicsError ? <Text style={styles.stateText}>{topicsError}</Text> : null}
+        {!isLoadingTopics && !topicsError && topTopics.length === 0 ? (
+          <Text style={styles.stateText}>Ainda não há conversas nesta região.</Text>
+        ) : null}
+        {topTopics.map((topic) => (
+          <Pressable
+            accessibilityRole="button"
+            key={topic.id}
+            onPress={() =>
+              router.push({ pathname: '/forum/[topicId]', params: { topicId: topic.id } })
+            }
+            style={({ pressed }) => pressed && styles.pressed}>
+            <RegionCard>
+              <View style={styles.postHeader}>
+                <UserAvatar
+                  avatarUrl={topic.authorSnapshot.avatarUrl}
+                  name={topic.authorSnapshot.fullName}
+                  size={26}
+                />
+                <Text numberOfLines={1} style={styles.postAuthor}>
+                  {topic.authorSnapshot.fullName}
+                </Text>
+                <Ionicons color={BrandColors.textMuted} name="heart-outline" size={12} />
+                <Text style={styles.postLikes}>{topic.netVotes}</Text>
+              </View>
+              <Text numberOfLines={1} style={styles.postTitle}>
+                {topic.title}
+              </Text>
+              <Text numberOfLines={3} style={styles.postText}>
+                {topic.content}
+              </Text>
+            </RegionCard>
+          </Pressable>
         ))}
 
         <Pressable
@@ -329,6 +359,16 @@ const styles = StyleSheet.create({
   postLikes: {
     color: BrandColors.textMuted,
     fontSize: 11,
+  },
+  postTitle: {
+    color: BrandColors.textPrimary,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  stateText: {
+    color: BrandColors.textSecondary,
+    fontSize: 12,
+    textAlign: 'center',
   },
   postText: {
     color: BrandColors.textSecondary,

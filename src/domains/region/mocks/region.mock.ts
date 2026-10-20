@@ -23,12 +23,6 @@ export interface RegionDetails {
     series: { label: string; value: number }[];
     note: string;
   };
-  forumHighlights: {
-    id: string;
-    author: string;
-    likes: number;
-    text: string;
-  }[];
 }
 
 /** Static data while the region endpoint does not exist; every RA shares it. */
@@ -92,18 +86,4 @@ export const REGION_DETAILS_MOCK: RegionDetails = {
     ],
     note: 'Total de ocorrências e abaixo da média do DF',
   },
-  forumHighlights: [
-    {
-      id: '1',
-      author: 'Ana Beatriz',
-      likes: 14,
-      text: 'Moro aqui há 3 anos e o que mais gosto é a facilidade de ir pro Plano sem pegar trânsito.',
-    },
-    {
-      id: '2',
-      author: 'Clara Leão',
-      likes: 18,
-      text: 'O comércio tem de tudo, mas depois das 22h fecha quase tudo. Se você trabalha até tarde, precisa se programar.',
-    },
-  ],
 };
