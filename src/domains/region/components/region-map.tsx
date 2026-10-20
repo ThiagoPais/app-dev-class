@@ -1,7 +1,10 @@
+import { useMemo, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
-import { getOpenStreetMapUrl } from '../utils/map-url';
+import { getHeatPoints, type HeatPeriod } from '../utils/heat-points';
+import { buildMapHtml } from '../utils/map-html';
+import { HeatmapToggle } from './heatmap-toggle';
 
 type MapsModule = typeof import('expo-maps');
 
@@ -26,10 +29,33 @@ interface RegionMapProps {
   coordinates: { latitude: number; longitude: number };
 }
 
-/** Static map centred on the RA; falls back to OpenStreetMap where expo-maps is unavailable. */
+/** Circle radius (metres) and base colour of the native heat approximation. */
+const HEAT_RADIUS = 110;
+const HEAT_COLOR = [233, 110, 151];
+
+/** Map centred on the RA with a popularity heatmap toggle; OpenStreetMap where expo-maps is missing. */
 export function RegionMap({ city, coordinates }: RegionMapProps) {
+  const [showHeat, setShowHeat] = useState(false);
+  const [period, setPeriod] = useState<HeatPeriod>('noite');
+  const heatPoints = useMemo(() => getHeatPoints(coordinates, period), [coordinates, period]);
+  const html = useMemo(
+    () => buildMapHtml({ city, coordinates, heatPoints, showHeat }),
+    [city, coordinates, heatPoints, showHeat]
+  );
+
+  // expo-maps has no heatmap layer: overlapping translucent circles give a similar look.
+  const circles = showHeat
+    ? heatPoints.map((point, index) => ({
+        id: `heat-${index}`,
+        center: { latitude: point.latitude, longitude: point.longitude },
+        radius: HEAT_RADIUS * (0.6 + point.intensity * 0.6),
+        color: `rgba(${HEAT_COLOR.join(',')}, ${(0.08 + point.intensity * 0.1).toFixed(2)})`,
+      }))
+    : [];
+
   const mapProps = {
     cameraPosition: { coordinates, zoom: 13 },
+    circles,
     markers: [{ id: city, coordinates, title: city }],
     style: styles.fill,
   };
@@ -43,17 +69,24 @@ export function RegionMap({ city, coordinates }: RegionMapProps) {
       ) : (
         <WebView
           accessibilityLabel={`Mapa de ${city}`}
-          source={{ uri: getOpenStreetMapUrl(coordinates) }}
+          originWhitelist={['*']}
+          source={{ html }}
           style={styles.fill}
         />
       )}
+      <HeatmapToggle
+        active={showHeat}
+        onToggle={() => setShowHeat((current) => !current)}
+        period={period}
+        onPeriodChange={setPeriod}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    height: 140,
+    height: 180,
     overflow: 'hidden',
     borderRadius: 12,
   },

@@ -87,3 +87,43 @@ export const REGION_DETAILS_MOCK: RegionDetails = {
     note: 'Total de ocorrências e abaixo da média do DF',
   },
 };
+
+export interface ForumHighlight {
+  id: string;
+  authorName: string;
+  avatarUrl: string | null;
+  votes: number;
+  title: string;
+  content: string;
+}
+
+/** Shown while a region has no real topics, so the screen can be demoed (e.g. Sobradinho). */
+export const FORUM_HIGHLIGHTS_MOCK: ForumHighlight[] = [
+  {
+    id: 'mock-1',
+    authorName: 'Ana Beatriz',
+    avatarUrl: null,
+    votes: 18,
+    title: 'Vale a pena morar aqui?',
+    content:
+      'Moro aqui há 3 anos e o que mais gosto é a facilidade de ir pro Plano sem pegar trânsito.',
+  },
+  {
+    id: 'mock-2',
+    authorName: 'Clara Leão',
+    avatarUrl: null,
+    votes: 14,
+    title: 'Comércio e vida noturna',
+    content:
+      'O comércio tem de tudo, mas depois das 22h fecha quase tudo. Se você trabalha até tarde, precisa se programar.',
+  },
+  {
+    id: 'mock-3',
+    authorName: 'Rafael Souza',
+    avatarUrl: null,
+    votes: 9,
+    title: 'Opções de lazer no fim de semana',
+    content:
+      'Tem bastante praça e quadra pra quem gosta de ficar ao ar livre, e feira aos domingos.',
+  },
+];

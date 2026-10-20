@@ -12,7 +12,7 @@ import { RegionCard } from '../components/region-card';
 import { RegionMap } from '../components/region-map';
 import { SafetyChart } from '../components/safety-chart';
 import { DF_CENTER, REGION_COORDINATES } from '../constants';
-import { REGION_DETAILS_MOCK } from '../mocks/region.mock';
+import { FORUM_HIGHLIGHTS_MOCK, REGION_DETAILS_MOCK } from '../mocks/region.mock';
 
 const PHOTO_COLORS = ['#9FB1A0', '#D9C77A', '#7FA3B8'];
 
@@ -25,11 +25,22 @@ function goBack() {
 export function RegionDetailScreen({ city }: { city: string }) {
   const { bottom } = useSafeAreaInsets();
   const details = REGION_DETAILS_MOCK;
-  const {
-    topics: topTopics,
-    isLoading: isLoadingTopics,
-    errorMessage: topicsError,
-  } = useTopCityTopics(city);
+  const { topics: topTopics, isLoading: isLoadingTopics } = useTopCityTopics(city);
+
+  // Falls back to the mock when the RA has no topics yet (or they failed to load).
+  const highlights = topTopics.length
+    ? topTopics.map((topic) => ({
+        id: topic.id,
+        authorName: topic.authorSnapshot.fullName,
+        avatarUrl: topic.authorSnapshot.avatarUrl,
+        votes: topic.netVotes,
+        title: topic.title,
+        content: topic.content,
+        isMock: false,
+      }))
+    : isLoadingTopics
+      ? []
+      : FORUM_HIGHLIGHTS_MOCK.map((highlight) => ({ ...highlight, isMock: true }));
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
@@ -139,36 +150,29 @@ export function RegionDetailScreen({ city }: { city: string }) {
 
         <Text style={styles.sectionTitle}>Destaques do fórum</Text>
         {isLoadingTopics ? <ActivityIndicator color={BrandColors.primary} /> : null}
-        {topicsError ? <Text style={styles.stateText}>{topicsError}</Text> : null}
-        {!isLoadingTopics && !topicsError && topTopics.length === 0 ? (
-          <Text style={styles.stateText}>Ainda não há conversas nesta região.</Text>
-        ) : null}
-        {topTopics.map((topic) => (
+        {highlights.map((highlight) => (
           <Pressable
             accessibilityRole="button"
-            key={topic.id}
+            disabled={highlight.isMock}
+            key={highlight.id}
             onPress={() =>
-              router.push({ pathname: '/forum/[topicId]', params: { topicId: topic.id } })
+              router.push({ pathname: '/forum/[topicId]', params: { topicId: highlight.id } })
             }
             style={({ pressed }) => pressed && styles.pressed}>
             <RegionCard>
               <View style={styles.postHeader}>
-                <UserAvatar
-                  avatarUrl={topic.authorSnapshot.avatarUrl}
-                  name={topic.authorSnapshot.fullName}
-                  size={26}
-                />
+                <UserAvatar avatarUrl={highlight.avatarUrl} name={highlight.authorName} size={26} />
                 <Text numberOfLines={1} style={styles.postAuthor}>
-                  {topic.authorSnapshot.fullName}
+                  {highlight.authorName}
                 </Text>
                 <Ionicons color={BrandColors.textMuted} name="heart-outline" size={12} />
-                <Text style={styles.postLikes}>{topic.netVotes}</Text>
+                <Text style={styles.postLikes}>{highlight.votes}</Text>
               </View>
               <Text numberOfLines={1} style={styles.postTitle}>
-                {topic.title}
+                {highlight.title}
               </Text>
               <Text numberOfLines={3} style={styles.postText}>
-                {topic.content}
+                {highlight.content}
               </Text>
             </RegionCard>
           </Pressable>
@@ -364,11 +368,6 @@ const styles = StyleSheet.create({
     color: BrandColors.textPrimary,
     fontSize: 12,
     fontWeight: '600',
-  },
-  stateText: {
-    color: BrandColors.textSecondary,
-    fontSize: 12,
-    textAlign: 'center',
   },
   postText: {
     color: BrandColors.textSecondary,
