@@ -1,0 +1,109 @@
+import type { Ionicons } from '@expo/vector-icons';
+
+type IoniconName = keyof typeof Ionicons.glyphMap;
+
+export interface RegionDetails {
+  tags: string[];
+  description: string;
+  extraPhotos: number;
+  mobility: {
+    text: string;
+    modes: { icon: IoniconName; label: string }[];
+    source: string;
+  };
+  leisure: { label: string; percent: number }[];
+  residents: { title: string; items: string[] };
+  income: {
+    summary: string;
+    /** Bars of the income distribution; `highlighted` marks this region. */
+    bars: { value: number; highlighted?: boolean }[];
+    source: string;
+  };
+  safety: {
+    series: { label: string; value: number }[];
+    note: string;
+  };
+  forumHighlights: {
+    id: string;
+    author: string;
+    likes: number;
+    text: string;
+  }[];
+}
+
+/** Static data while the region endpoint does not exist; every RA shares it. */
+export const REGION_DETAILS_MOCK: RegionDetails = {
+  tags: ['Bem-localizado', 'Custo-benefício'],
+  description:
+    'O Núcleo Bandeirante fica entre o Plano Piloto, o Park Way, o Riacho Fundo e o Aeroporto, com acesso direto pela EPTG e EPIA. O custo de vida é mais baixo que no Plano Piloto, apesar da proximidade. A região é conhecida como "Cidade Livre" antes da construção de Brasília, e ainda mantém ruas estreitas e ritmo tranquilo.',
+  extraPhotos: 4,
+  mobility: {
+    text: 'A obra de ligação entre o Guará, o Park Way e o Núcleo Bandeirante foi duplicada e entregue recentemente.',
+    modes: [
+      { icon: 'train-outline', label: 'Metrô' },
+      { icon: 'bus-outline', label: 'Ônibus' },
+      { icon: 'bicycle-outline', label: 'Ciclovia' },
+    ],
+    source: 'STPG/DF 2025',
+  },
+  leisure: [
+    { label: 'Ponto de ônibus', percent: 95 },
+    { label: 'Ruas arborizadas', percent: 92.3 },
+    { label: 'Quadras esportivas', percent: 92.1 },
+    { label: 'Praça', percent: 90.5 },
+    { label: 'Academia/PEC', percent: 89.7 },
+    { label: 'Travessia sinalizada', percent: 87 },
+    { label: 'Jardins/Parques', percent: 81.4 },
+    { label: 'Ciclovia/Ciclofaixa', percent: 70.3 },
+    { label: 'Espaço cultural', percent: 67.5 },
+  ],
+  residents: {
+    title: 'Moradores afirmaram ter na rua ou nas proximidades',
+    items: ['Rua asfaltada', 'Rua iluminada', 'Rua com calçada', 'Drenagem de chuva'],
+  },
+  income: {
+    summary:
+      'Comparado às demais RAs do DF, o Núcleo Bandeirante está na faixa de renda média-alta. A renda domiciliar média mensal gira em torno de R$ 5.486,00 (maior parte dos domicílios concentram mais de 2 a 5 salários mínimos).',
+    bars: [
+      { value: 48 },
+      { value: 52 },
+      { value: 50 },
+      { value: 58 },
+      { value: 60 },
+      { value: 64 },
+      { value: 68 },
+      { value: 74, highlighted: true },
+      { value: 80 },
+      { value: 86 },
+      { value: 92 },
+      { value: 100 },
+    ],
+    source: 'PDAD 2024',
+  },
+  safety: {
+    series: [
+      { label: 'Homicídios', value: 4 },
+      { label: 'Roubo a transeunte', value: 12 },
+      { label: 'Furto em veículo', value: 112 },
+      { label: 'Roubo de veículo', value: 8 },
+      { label: 'Roubo em comércio', value: 10 },
+      { label: 'Furto de veículo', value: 90 },
+      { label: 'Furto a pedestre', value: 22 },
+    ],
+    note: 'Total de ocorrências e abaixo da média do DF',
+  },
+  forumHighlights: [
+    {
+      id: '1',
+      author: 'Ana Beatriz',
+      likes: 14,
+      text: 'Moro aqui há 3 anos e o que mais gosto é a facilidade de ir pro Plano sem pegar trânsito.',
+    },
+    {
+      id: '2',
+      author: 'Clara Leão',
+      likes: 18,
+      text: 'O comércio tem de tudo, mas depois das 22h fecha quase tudo. Se você trabalha até tarde, precisa se programar.',
+    },
+  ],
+};
