@@ -45,7 +45,7 @@ function seeded(seed: number) {
 /** Mocked popularity around an RA until the forum exposes per-area activity. */
 export function getHeatPoints(
   { latitude, longitude }: Coordinates,
-  period: HeatPeriod = 'noite',
+  period: HeatPeriod = 'noite'
 ): HeatPoint[] {
   const config = HEAT_PERIODS.find((item) => item.id === period) ?? HEAT_PERIODS[3];
   const points: HeatPoint[] = [];

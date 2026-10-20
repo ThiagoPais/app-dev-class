@@ -73,8 +73,7 @@ export function CardFeed({
 
       <Text
         numberOfLines={descriptionLines}
-        style={[styles.description, { color: mutedColor, borderBottomColor: borderColor }]}
-      >
+        style={[styles.description, { color: mutedColor, borderBottomColor: borderColor }]}>
         {description}
       </Text>
 

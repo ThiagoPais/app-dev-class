@@ -14,10 +14,9 @@ export function CityCard({ overview, onPress }: { overview: CityOverview; onPres
   return (
     <Pressable
       accessibilityHint="Abre o fórum desta RA"
-      accessibilityRole="button"
+      accessibilityLabel={`Fórum de ${city}`}
       onPress={onPress}
-      style={({ pressed }) => pressed && styles.pressed}
-    >
+      style={({ pressed }) => pressed && styles.pressed}>
       <CardFeed
         active={lastActivityAt ? isRecentlyActive(lastActivityAt) : false}
         conversations={topicsCount}
@@ -38,8 +37,7 @@ export function CityCard({ overview, onPress }: { overview: CityOverview; onPres
             accessibilityRole="button"
             hitSlop={6}
             onPress={() => router.push({ pathname: '/region/[city]', params: { city } })}
-            style={({ pressed }) => [styles.detailsButton, pressed && styles.pressed]}
-          >
+            style={({ pressed }) => [styles.detailsButton, pressed && styles.pressed]}>
             <Ionicons color={BrandColors.primary} name="information-circle-outline" size={14} />
             <Text style={styles.detailsText}>Sobre a região</Text>
           </Pressable>

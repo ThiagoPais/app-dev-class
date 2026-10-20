@@ -26,8 +26,7 @@ export function HeatmapToggle({ active, onToggle, period, onPeriodChange }: Heat
           styles.chip,
           active && styles.chipActive,
           pressed && styles.pressed,
-        ]}
-      >
+        ]}>
         <Ionicons
           color={active ? BrandColors.white : BrandColors.primary}
           name="flame-outline"
@@ -48,8 +47,7 @@ export function HeatmapToggle({ active, onToggle, period, onPeriodChange }: Heat
                 accessibilityState={{ selected }}
                 hitSlop={4}
                 onPress={() => onPeriodChange(item.id)}
-                style={[styles.period, selected && styles.periodSelected]}
-              >
+                style={[styles.period, selected && styles.periodSelected]}>
                 <Text style={[styles.periodText, selected && styles.chipTextActive]}>
                   {item.label}
                 </Text>

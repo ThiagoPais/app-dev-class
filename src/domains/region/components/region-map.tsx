@@ -4,6 +4,7 @@ import { WebView } from 'react-native-webview';
 
 import { getHeatPoints, type HeatPeriod } from '../utils/heat-points';
 import { buildMapHtml } from '../utils/map-html';
+import { GOOGLE_MAPS_API_KEY } from '../utils/maps-key';
 import { HeatmapToggle } from './heatmap-toggle';
 
 type MapsModule = typeof import('expo-maps');
@@ -39,7 +40,14 @@ export function RegionMap({ city, coordinates }: RegionMapProps) {
   const [period, setPeriod] = useState<HeatPeriod>('noite');
   const heatPoints = useMemo(() => getHeatPoints(coordinates, period), [coordinates, period]);
   const html = useMemo(
-    () => buildMapHtml({ city, coordinates, heatPoints, showHeat }),
+    () =>
+      buildMapHtml({
+        city,
+        coordinates,
+        heatPoints,
+        showHeat,
+        googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+      }),
     [city, coordinates, heatPoints, showHeat]
   );
 
