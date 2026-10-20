@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 export type CardFeedProps = {
@@ -17,6 +18,8 @@ export type CardFeedProps = {
   /** Texto do status quando inativo (padrao: "Inativa") */
   inactiveLabel?: string;
   lastActivity?: string;
+  /** Elemento extra (ex.: botao) exibido no cabecalho, ao lado do selo */
+  action?: ReactNode;
   /** Cores (todas opcionais) */
   backgroundColor?: string;
   textColor?: string;
@@ -41,6 +44,7 @@ export function CardFeed({
   active = false,
   inactiveLabel = 'Inativa',
   lastActivity,
+  action,
   backgroundColor = '#FFFFFF',
   textColor = '#000000',
   mutedColor = '#60646C',
@@ -57,16 +61,20 @@ export function CardFeed({
     <View style={[styles.contentCard, { backgroundColor }]}>
       <View style={styles.cardHeader}>
         <Text style={[styles.title, { color: textColor }]}>{title}</Text>
-        <View style={[styles.badge, { backgroundColor: badgeBackground }]}>
-          <Text style={[styles.badgeText, { color: badgeColor }]} numberOfLines={1}>
-            {badgeLabel ?? `${conversations} ${conversations === 1 ? 'conversa' : 'conversas'}`}
-          </Text>
+        <View style={styles.headerEnd}>
+          <View style={[styles.badge, { backgroundColor: badgeBackground }]}>
+            <Text style={[styles.badgeText, { color: badgeColor }]} numberOfLines={1}>
+              {badgeLabel ?? `${conversations} ${conversations === 1 ? 'conversa' : 'conversas'}`}
+            </Text>
+          </View>
+          {action}
         </View>
       </View>
 
       <Text
         numberOfLines={descriptionLines}
-        style={[styles.description, { color: mutedColor, borderBottomColor: borderColor }]}>
+        style={[styles.description, { color: mutedColor, borderBottomColor: borderColor }]}
+      >
         {description}
       </Text>
 
@@ -145,6 +153,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
+  },
+  headerEnd: {
+    flexShrink: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   footerText: {
     fontSize: 14,

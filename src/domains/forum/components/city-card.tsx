@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text } from 'react-native';
 
 import { CardFeed } from '@/components/card-feed';
 import { BrandColors } from '@/shared/constants/colors';
@@ -12,47 +12,45 @@ export function CityCard({ overview, onPress }: { overview: CityOverview; onPres
   const { city, topicsCount, repliesCount, likesCount, latestTopic, lastActivityAt } = overview;
 
   return (
-    <View>
-      <Pressable
-        accessibilityHint="Abre o fórum desta RA"
-        accessibilityRole="button"
-        onPress={onPress}
-        style={({ pressed }) => pressed && styles.pressed}>
-        <CardFeed
-          active={lastActivityAt ? isRecentlyActive(lastActivityAt) : false}
-          conversations={topicsCount}
-          description={
-            latestTopic
-              ? `${latestTopic.title}: ${latestTopic.content}`
-              : 'Nenhuma conversa ainda. Seja o primeiro a puxar assunto!'
-          }
-          descriptionLines={2}
-          inactiveLabel={lastActivityAt ? 'Última atividade' : 'Sem conversas'}
-          lastActivity={lastActivityAt ? formatRelativeTime(lastActivityAt) : undefined}
-          likes={likesCount}
-          messages={repliesCount}
-          title={city}
-        />
-      </Pressable>
-      <Pressable
-        accessibilityLabel={`Ver detalhes de ${city}`}
-        accessibilityRole="button"
-        hitSlop={6}
-        onPress={() => router.push({ pathname: '/region/[city]', params: { city } })}
-        style={({ pressed }) => [styles.detailsButton, pressed && styles.pressed]}>
-        <Ionicons color={BrandColors.primary} name="information-circle-outline" size={14} />
-        <Text style={styles.detailsText}>Sobre a região</Text>
-      </Pressable>
-    </View>
+    <Pressable
+      accessibilityHint="Abre o fórum desta RA"
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => pressed && styles.pressed}
+    >
+      <CardFeed
+        active={lastActivityAt ? isRecentlyActive(lastActivityAt) : false}
+        conversations={topicsCount}
+        description={
+          latestTopic
+            ? `${latestTopic.title}: ${latestTopic.content}`
+            : 'Nenhuma conversa ainda. Seja o primeiro a puxar assunto!'
+        }
+        descriptionLines={2}
+        inactiveLabel={lastActivityAt ? 'Última atividade' : 'Sem conversas'}
+        lastActivity={lastActivityAt ? formatRelativeTime(lastActivityAt) : undefined}
+        likes={likesCount}
+        messages={repliesCount}
+        title={city}
+        action={
+          <Pressable
+            accessibilityLabel={`Ver detalhes de ${city}`}
+            accessibilityRole="button"
+            hitSlop={6}
+            onPress={() => router.push({ pathname: '/region/[city]', params: { city } })}
+            style={({ pressed }) => [styles.detailsButton, pressed && styles.pressed]}
+          >
+            <Ionicons color={BrandColors.primary} name="information-circle-outline" size={14} />
+            <Text style={styles.detailsText}>Sobre a região</Text>
+          </Pressable>
+        }
+      />
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   detailsButton: {
-    alignSelf: 'flex-end',
-    marginTop: -6,
-    marginBottom: 16,
-    marginRight: 4,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
