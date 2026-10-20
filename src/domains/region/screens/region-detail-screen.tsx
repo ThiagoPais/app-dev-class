@@ -6,11 +6,11 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { UserAvatar } from '@/shared/components/ui';
 import { BrandColors } from '@/shared/constants/colors';
 
-import { DF_CENTER, REGION_COORDINATES } from '../constants';
 import { IncomeChart } from '../components/income-chart';
 import { RegionCard } from '../components/region-card';
 import { RegionMap } from '../components/region-map';
 import { SafetyChart } from '../components/safety-chart';
+import { DF_CENTER, REGION_COORDINATES } from '../constants';
 import { REGION_DETAILS_MOCK } from '../mocks/region.mock';
 
 const PHOTO_COLORS = ['#9FB1A0', '#D9C77A', '#7FA3B8'];
@@ -39,8 +39,8 @@ export function RegionDetailScreen({ city }: { city: string }) {
         <Text numberOfLines={1} style={styles.headerTitle}>
           {city}
         </Text>
-        <Ionicons color={BrandColors.textPrimary} name="heart-outline" size={20} />
-        <Ionicons color={BrandColors.textPrimary} name="share-social-outline" size={20} />
+        {/* <Ionicons color={BrandColors.textPrimary} name="heart-outline" size={20} />
+        <Ionicons color={BrandColors.textPrimary} name="share-social-outline" size={20} /> */}
       </View>
 
       <ScrollView
