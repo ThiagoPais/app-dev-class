@@ -1,10 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
+import { openBrowserAsync } from 'expo-web-browser';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MapeeiLogo } from '@/shared/components/logo';
+import { UserAvatar } from '@/shared/components/ui';
 import { BrandColors } from '@/shared/constants/colors';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
@@ -12,18 +14,37 @@ type IoniconName = keyof typeof Ionicons.glyphMap;
 const features: { icon: IoniconName; title: string; description: string }[] = [
   {
     icon: 'map-outline',
-    title: 'Lorem ipsum',
-    description: 'Dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor.',
+    title: 'Raio-X das regiões',
+    description:
+      'Segurança, mobilidade, lazer, renda e mapas de calor de cada região administrativa, com base em dados públicos.',
   },
   {
     icon: 'chatbubbles-outline',
-    title: 'Dolor sit amet',
-    description: 'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+    title: 'Fórum por região',
+    description: 'Tópicos e respostas de moradores reais, organizados por RA e por categoria.',
   },
   {
     icon: 'people-outline',
-    title: 'Consectetur elit',
-    description: 'Duis aute irure dolor in reprehenderit in voluptate velit esse.',
+    title: 'Conversa direta',
+    description: 'Troque mensagens com outros usuários para tirar dúvidas sobre o dia a dia no bairro.',
+  },
+];
+
+const developers: { name: string; github: string; avatarUrl: string }[] = [
+  {
+    name: 'Thiago Cardoso',
+    github: 'https://github.com/ThiagoPais',
+    avatarUrl: 'https://avatars.githubusercontent.com/u/34371661?v=4',
+  },
+  {
+    name: 'Arthur Mota Furtado',
+    github: 'https://github.com/BomDia12',
+    avatarUrl: 'https://avatars.githubusercontent.com/u/63117167?v=4',
+  },
+  {
+    name: 'Arthur Brasa',
+    github: 'https://github.com/ArthurBrasa',
+    avatarUrl: 'https://avatars.githubusercontent.com/u/66705986?v=4',
   },
 ];
 
@@ -53,18 +74,26 @@ export function AboutScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
           <MapeeiLogo width={140} />
-          <Text style={styles.tagline}>Lorem ipsum dolor sit amet consectetur.</Text>
+          <Text style={styles.tagline}>Conheça a região antes de se mudar.</Text>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Lorem ipsum</Text>
+          <Text style={styles.sectionTitle}>O que é o Mapeei</Text>
           <Text style={styles.paragraph}>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+            O Mapeei ajuda quem vai morar no Distrito Federal a escolher onde viver. O app reúne
+            dados públicos sobre segurança, transporte, lazer e custo de vida de cada região
+            administrativa e os combina com relatos de moradores, para que você decida com mais
+            confiança.
           </Text>
+          <Text style={styles.paragraph}>
+            Projeto desenvolvido na disciplina de desenvolvimento de aplicativos. As informações
+            exibidas são de caráter informativo e podem estar desatualizadas.
+          </Text>
+          <Text style={styles.disclaimer}>Este app não possui garantias</Text>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Dolor sit amet</Text>
+          <Text style={styles.sectionTitle}>Funcionalidades</Text>
           {features.map((feature) => (
             <View key={feature.title} style={styles.feature}>
               <View style={styles.featureIcon}>
@@ -75,6 +104,26 @@ export function AboutScreen() {
                 <Text style={styles.featureDescription}>{feature.description}</Text>
               </View>
             </View>
+          ))}
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Desenvolvedores</Text>
+          {developers.map((developer) => (
+            <Pressable
+              accessibilityHint="Abre o perfil no GitHub"
+              accessibilityLabel={`${developer.name}, GitHub`}
+              accessibilityRole="link"
+              key={developer.github}
+              onPress={() => openBrowserAsync(developer.github)}
+              style={({ pressed }) => [styles.developer, pressed && styles.pressed]}>
+              <UserAvatar avatarUrl={developer.avatarUrl} name={developer.name} size={44} />
+              <View style={styles.featureCopy}>
+                <Text style={styles.featureTitle}>{developer.name}</Text>
+                <Text style={styles.developerLink}>{developer.github.replace('https://', '')}</Text>
+              </View>
+              <Ionicons color={BrandColors.textMuted} name="logo-github" size={20} />
+            </Pressable>
           ))}
         </View>
 
@@ -157,6 +206,20 @@ const styles = StyleSheet.create({
     color: BrandColors.textSecondary,
     fontSize: 13,
     lineHeight: 20,
+  },
+  disclaimer: {
+    color: BrandColors.textPrimary,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  developer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  developerLink: {
+    color: BrandColors.primary,
+    fontSize: 12,
   },
   feature: {
     flexDirection: 'row',
