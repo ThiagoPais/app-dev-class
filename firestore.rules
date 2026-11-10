@@ -404,5 +404,24 @@ service cloud.firestore {
         allow delete: if false;
       }
     }
+
+    // ---------- Neighborhoods ----------
+    // Reference data: signed-in users read, nobody writes from a client. Writes come only
+    // from the privileged writer (admin SDK), which bypasses these rules.
+    match /neighborhoods/{neighborhoodId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    match /neighborhood_data/{neighborhoodDataId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // State/city summary, maintained only by the privileged writer
+    match /neighborhood_locations/{state} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
   }
 }

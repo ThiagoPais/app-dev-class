@@ -54,6 +54,8 @@
     "test:chat:rules": "npx -y firebase-tools emulators:exec --only firestore --project demo-chat-rules \"node --import ./tests/rules/register.mjs --test tests/rules/chat-rules.test.mjs\"",
     "test:forum": "bun test tests/forum-ui.test.js",
     "test:forum:emulator": "bun test tests/forum-pagination.test.js",
+    "test:neighborhood": "bun test tests/neighborhood-indexes.test.js",
+    "test:neighborhood:rules": "npx -y firebase-tools emulators:exec --only firestore --project demo-neighborhood-rules \"node --import ./tests/rules/register.mjs --test tests/rules/neighborhood-rules.test.mjs\"",
     "test:rules": "npx -y firebase-tools emulators:exec --only firestore --project demo-forum-rules \"node --import ./tests/rules/register.mjs --test tests/rules/forum-rules.test.mjs\""
   },
   "private": true
