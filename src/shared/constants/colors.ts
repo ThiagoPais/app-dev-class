@@ -1,6 +1,8 @@
 export const BrandColors = {
   primary: '#832D51',
   secondary: '#E96E97',
+  olive: '#7E8C1E',
+  oliveDark: '#5F6B1C',
   background: '#FFFFFF',
   inputBackground: '#F8F9FB',
   inputBorder: '#E8E8EC',

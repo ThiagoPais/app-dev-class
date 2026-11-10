@@ -26,6 +26,19 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // ---------- Regions ----------
+    // One page per RA, written only by scripts/seed-regions.mjs with admin credentials.
+    match /regions/{slug} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+
+      // Heatmap points per layer; edited in the Firebase console or by the seed script.
+      match /heatmap_layers/{layerId} {
+        allow read: if isAuthenticated();
+        allow write: if false;
+      }
+    }
+
     match /users/{userId} {
       allow read, create, update: if isOwner(userId);
       allow delete: if false;

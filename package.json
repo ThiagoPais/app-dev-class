@@ -57,7 +57,10 @@
     "test:chat:rules": "npx -y firebase-tools emulators:exec --only firestore --project demo-chat-rules \"node --import ./tests/rules/register.mjs --test tests/rules/chat-rules.test.mjs\"",
     "test:forum": "bun test tests/forum-ui.test.js",
     "test:forum:emulator": "bun test tests/forum-pagination.test.js",
-    "test:rules": "npx -y firebase-tools emulators:exec --only firestore --project demo-forum-rules \"node --import ./tests/rules/register.mjs --test tests/rules/forum-rules.test.mjs\""
+    "test:rules": "npx -y firebase-tools emulators:exec --only firestore --project demo-forum-rules \"node --import ./tests/rules/register.mjs --test tests/rules/forum-rules.test.mjs\"",
+    "seed:regions": "bun scripts/seed-regions.mjs",
+    "test:region": "bun test tests/region-utils.test.js tests/region-backend.test.js",
+    "test:region:rules": "npx -y firebase-tools emulators:exec --only firestore --project demo-region-rules \"node --test tests/rules/region-rules.test.mjs\""
   },
   "private": true
 }

@@ -1,0 +1,286 @@
+{
+  "slug": "asa-norte",
+  "name": "Asa Norte",
+  "forumCity": "Plano Piloto",
+  "photos": [
+    {
+      "uri": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Asa_Norte_-_Bras%C3%ADlia_-_panoramio.jpg/960px-Asa_Norte_-_Bras%C3%ADlia_-_panoramio.jpg",
+      "caption": "Superquadra da Asa Norte",
+      "credit": "Wikimedia Commons"
+    },
+    {
+      "uri": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Flamboyants_-_Asa_Norte_-_Bras%C3%ADlia%2C_Brasil_%2817%29_%2853283718324%29.jpg/960px-Flamboyants_-_Asa_Norte_-_Bras%C3%ADlia%2C_Brasil_%2817%29_%2853283718324%29.jpg",
+      "caption": "Flamboyants floridos",
+      "credit": "Wikimedia Commons"
+    },
+    {
+      "uri": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Nossa_Bras%C3%ADlia_-_%C3%81rvore_na_Asa_Norte_%2816814390768%29.jpg/960px-Nossa_Bras%C3%ADlia_-_%C3%81rvore_na_Asa_Norte_%2816814390768%29.jpg",
+      "caption": "Área verde entre os blocos",
+      "credit": "Wikimedia Commons"
+    },
+    {
+      "uri": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Flamboyants_-_Asa_Norte_-_Bras%C3%ADlia%2C_Brasil_%2853285957149%29.jpg/960px-Flamboyants_-_Asa_Norte_-_Bras%C3%ADlia%2C_Brasil_%2853285957149%29.jpg",
+      "caption": "Eixos arborizados",
+      "credit": "Wikimedia Commons"
+    },
+    {
+      "uri": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Flamboyants_-_Asa_Norte_-_Bras%C3%ADlia%2C_Brasil_%2810%29_%2853285836363%29.jpg/960px-Flamboyants_-_Asa_Norte_-_Bras%C3%ADlia%2C_Brasil_%2810%29_%2853285836363%29.jpg",
+      "caption": "Primavera na Asa Norte",
+      "credit": "Wikimedia Commons"
+    },
+    {
+      "uri": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/Flamboyants_-_Asa_Norte_-_Bras%C3%ADlia%2C_Brasil_%2812%29_%2853285585916%29.jpg/960px-Flamboyants_-_Asa_Norte_-_Bras%C3%ADlia%2C_Brasil_%2812%29_%2853285585916%29.jpg",
+      "caption": "Calçadas sombreadas",
+      "credit": "Wikimedia Commons"
+    },
+    {
+      "uri": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Igreja_da_Congrega%C3%A7%C3%A3o_Crist%C3%A3_no_Brasil_na_Asa_Norte_em_Bras%C3%ADlia.jpg/960px-Igreja_da_Congrega%C3%A7%C3%A3o_Crist%C3%A3_no_Brasil_na_Asa_Norte_em_Bras%C3%ADlia.jpg",
+      "caption": "Comércio e serviços",
+      "credit": "Wikimedia Commons"
+    }
+  ],
+  "tags": [
+    "Próximo à UnB",
+    "Lazer",
+    "Mobilidade"
+  ],
+  "description": "Uma das regiões administrativas mais consolidadas e movimentadas do Distrito Federal. Localizada no coração do Plano Piloto, a Asa Norte é um polo universitário, comercial e residencial, oferecendo ampla infraestrutura de serviços, transporte e lazer.",
+  "mobility": {
+    "title": "Mobilidade",
+    "summary": "Muitas linhas de ônibus, mas carece de metrô.",
+    "modes": [
+      {
+        "mode": "metro",
+        "label": "Metrô",
+        "available": false
+      },
+      {
+        "mode": "bus",
+        "label": "Ônibus",
+        "available": true
+      },
+      {
+        "mode": "bike",
+        "label": "Ciclovia",
+        "available": true
+      }
+    ],
+    "source": "STPC/DF 2026"
+  },
+  "surroundings": {
+    "title": "Moradores afirmaram ter na rua ou nas proximidades",
+    "items": [
+      "Rua asfaltada",
+      "Rua iluminada",
+      "Rua com calçada",
+      "Ruas arborizadas",
+      "Drenagem de chuva"
+    ],
+    "source": "PDAD 2021"
+  },
+  "leisure": {
+    "title": "Lazer",
+    "items": [
+      {
+        "label": "Ruas arborizadas",
+        "percentage": 99
+      },
+      {
+        "label": "Travessia sinalizada",
+        "percentage": 99
+      },
+      {
+        "label": "Ponto de ônibus",
+        "percentage": 99
+      },
+      {
+        "label": "Praça",
+        "percentage": 97
+      },
+      {
+        "label": "Ciclovia/Ciclofaixa",
+        "percentage": 97
+      },
+      {
+        "label": "Quadras esportivas",
+        "percentage": 94
+      },
+      {
+        "label": "Academia/PEC",
+        "percentage": 94
+      },
+      {
+        "label": "Jardins/Parques",
+        "percentage": 93
+      },
+      {
+        "label": "Espaço cultural",
+        "percentage": 82
+      }
+    ],
+    "source": "PDAD 2021"
+  },
+  "income": {
+    "title": "Rendimento domiciliar",
+    "description": "Comparado às demais RAs do DF, a Asa Norte está na faixa de renda alta. A renda domiciliar média mensal gira em torno de R$ 11.012,60 (a maior parte dos domicílios concentra mais de 6 a 7 salários mínimos).",
+    "ranking": [
+      {
+        "region": "Lago Sul",
+        "value": 13820.4
+      },
+      {
+        "region": "Park Way",
+        "value": 12150.0
+      },
+      {
+        "region": "Asa Norte",
+        "value": 11012.6
+      },
+      {
+        "region": "Asa Sul",
+        "value": 10890.3
+      },
+      {
+        "region": "Lago Norte",
+        "value": 10540.8
+      },
+      {
+        "region": "Sudoeste/Octogonal",
+        "value": 10210.5
+      },
+      {
+        "region": "Jardim Botânico",
+        "value": 9860.2
+      },
+      {
+        "region": "Águas Claras",
+        "value": 9420.7
+      },
+      {
+        "region": "Cruzeiro",
+        "value": 8130.9
+      },
+      {
+        "region": "Guará",
+        "value": 7640.1
+      },
+      {
+        "region": "Vicente Pires",
+        "value": 6920.4
+      },
+      {
+        "region": "Arniqueira",
+        "value": 6310.0
+      },
+      {
+        "region": "Taguatinga",
+        "value": 5780.6
+      },
+      {
+        "region": "Núcleo Bandeirante",
+        "value": 5210.3
+      },
+      {
+        "region": "Sobradinho",
+        "value": 4660.9
+      },
+      {
+        "region": "Gama",
+        "value": 3990.2
+      },
+      {
+        "region": "Ceilândia",
+        "value": 3420.5
+      },
+      {
+        "region": "Planaltina",
+        "value": 2950.8
+      }
+    ],
+    "source": "PDAD 2024"
+  },
+  "safety": {
+    "title": "Segurança",
+    "axisTicks": [
+      0,
+      10,
+      25,
+      50,
+      100,
+      150
+    ],
+    "occurrences": [
+      {
+        "label": "Homicídio",
+        "count": 15
+      },
+      {
+        "label": "Roubo de veículo",
+        "count": 27
+      },
+      {
+        "label": "Furto de veículos",
+        "count": 192
+      },
+      {
+        "label": "Roubo em coletivo",
+        "count": 8
+      },
+      {
+        "label": "Roubo em comércio",
+        "count": 22
+      },
+      {
+        "label": "Roubo de pedestre",
+        "count": 192
+      },
+      {
+        "label": "Furto em pedestres",
+        "count": 196
+      }
+    ],
+    "summary": "Total de ocorrências é acima da média do DF",
+    "source": "SSP-DF 2025, atualizados em 2026 · dados por tipo de crime",
+    "warning": "Atenção: Dados contemplam Asa Sul e Asa Norte (Plano Piloto)"
+  },
+  "location": {
+    "latitude": -15.7635,
+    "longitude": -47.8845,
+    "latitudeDelta": 0.075,
+    "longitudeDelta": 0.06,
+    "boundary": [
+      {
+        "latitude": -15.7925,
+        "longitude": -47.896
+      },
+      {
+        "latitude": -15.77,
+        "longitude": -47.899
+      },
+      {
+        "latitude": -15.748,
+        "longitude": -47.8985
+      },
+      {
+        "latitude": -15.733,
+        "longitude": -47.892
+      },
+      {
+        "latitude": -15.733,
+        "longitude": -47.877
+      },
+      {
+        "latitude": -15.75,
+        "longitude": -47.872
+      },
+      {
+        "latitude": -15.772,
+        "longitude": -47.873
+      },
+      {
+        "latitude": -15.788,
+        "longitude": -47.877
+      }
+    ]
+  }
+}
