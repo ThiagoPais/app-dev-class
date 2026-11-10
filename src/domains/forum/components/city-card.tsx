@@ -1,6 +1,9 @@
-import { Pressable, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { Pressable, StyleSheet, Text } from 'react-native';
 
 import { CardFeed } from '@/components/card-feed';
+import { BrandColors } from '@/shared/constants/colors';
 
 import type { CityOverview } from '../hooks/use-city-overview';
 import { formatRelativeTime, isRecentlyActive } from '../utils/format';
@@ -11,7 +14,7 @@ export function CityCard({ overview, onPress }: { overview: CityOverview; onPres
   return (
     <Pressable
       accessibilityHint="Abre o fórum desta RA"
-      accessibilityRole="button"
+      accessibilityLabel={`Fórum de ${city}`}
       onPress={onPress}
       style={({ pressed }) => pressed && styles.pressed}>
       <CardFeed
@@ -28,12 +31,37 @@ export function CityCard({ overview, onPress }: { overview: CityOverview; onPres
         likes={likesCount}
         messages={repliesCount}
         title={city}
+        action={
+          <Pressable
+            accessibilityLabel={`Ver detalhes de ${city}`}
+            accessibilityRole="button"
+            hitSlop={6}
+            onPress={() => router.push({ pathname: '/region/[city]', params: { city } })}
+            style={({ pressed }) => [styles.detailsButton, pressed && styles.pressed]}>
+            <Ionicons color={BrandColors.primary} name="information-circle-outline" size={14} />
+            <Text style={styles.detailsText}>Sobre a região</Text>
+          </Pressable>
+        }
       />
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
+  detailsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 999,
+    backgroundColor: '#FCE4EF',
+  },
+  detailsText: {
+    color: BrandColors.primary,
+    fontSize: 11,
+    fontWeight: '600',
+  },
   pressed: {
     opacity: 0.85,
   },

@@ -40,6 +40,7 @@ const accountItems: MenuItem[] = [
   { icon: 'settings-outline', label: 'Configurações' },
   { icon: 'lock-closed-outline', label: 'Privacidade' },
   { icon: 'help-circle-outline', label: 'Ajuda e suporte' },
+  { icon: 'information-circle-outline', label: 'Sobre', href: '/about' },
   { icon: 'log-out-outline', label: 'Sair', tone: 'danger' },
 ];
 
