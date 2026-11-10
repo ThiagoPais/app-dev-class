@@ -62,8 +62,8 @@ for (const [name, expectedIndex] of existing) {
   });
 }
 
-test('spec 4 additive: indexes has exactly 9 entries', () => {
-  expect(config.indexes.length).toBe(9);
+test('spec 4 additive: indexes has exactly 10 entries', () => {
+  expect(config.indexes.length).toBe(10);
 });
 
 test('spec 4 additive: fieldOverrides is still empty', () => {

@@ -75,6 +75,15 @@
         { "fieldPath": "user_ids", "arrayConfig": "CONTAINS" },
         { "fieldPath": "last_message_at", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "neighborhoods",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "state", "order": "ASCENDING" },
+        { "fieldPath": "city_normalized", "order": "ASCENDING" },
+        { "fieldPath": "neighborhood_normalized", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
