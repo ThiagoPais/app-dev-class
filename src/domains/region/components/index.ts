@@ -6,6 +6,7 @@ export * from './mobility-card';
 export * from './photo-gallery';
 export * from './region-header';
 export * from './region-map';
+export * from './region-map-section';
 export * from './region-tile';
 export * from './safety-card';
 export * from './surroundings-card';

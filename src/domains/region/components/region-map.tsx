@@ -1,12 +1,10 @@
-import { useMemo } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { useEffect, useMemo, useRef } from 'react';
+import { Platform, StyleSheet } from 'react-native';
 import { WebView } from 'react-native-webview';
 
-import { useHeatmap } from '../hooks/use-heatmap';
-import type { PopularityInfo, RegionLocation } from '../models/region.types';
-import { buildMapHtml, zoomForDelta } from '../utils/map-html';
+import type { HeatPoint, RegionLocation } from '../models/region.types';
+import { buildMapHtml, heatMessage, scriptJson, zoomForDelta } from '../utils/map-html';
 import { GOOGLE_MAPS_API_KEY } from '../utils/maps-key';
-import { HeatmapToggle } from './heatmap-toggle';
 
 type MapsModule = typeof import('expo-maps');
 
@@ -26,105 +24,103 @@ function loadMaps(): MapsModule | null {
 }
 
 const maps = loadMaps();
+const useNativeMap =
+  maps !== null &&
+  (Platform.OS === 'ios' || (Platform.OS === 'android' && Boolean(GOOGLE_MAPS_API_KEY)));
 
-interface RegionMapProps {
+export interface RegionMapProps {
   name: string;
   location: RegionLocation;
-  popularity: PopularityInfo | null;
+  /** Heat points to draw; empty hides the heat layer. */
+  points: HeatPoint[];
+  colors: string[];
 }
 
-/** Circle radius (metres) and base colour of the native heat approximation. */
-const HEAT_RADIUS = 110;
-const HEAT_COLOR = [233, 110, 151];
 const BOUNDARY_COLOR = '#E53935';
 
-/** Map centred on the RA with its outline and a popularity heatmap toggle. */
-export function RegionMap({ name, location, popularity }: RegionMapProps) {
-  const { showHeat, toggleHeat, period, setPeriod, heatPoints } = useHeatmap(popularity);
+function hexToRgba(hex: string, alpha: number) {
+  const value = parseInt(hex.slice(1), 16);
+  return `rgba(${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}, ${alpha.toFixed(2)})`;
+}
+
+/** Map of the RA with its outline and heat points. */
+export function RegionMap(props: RegionMapProps) {
+  return useNativeMap && maps ? <NativeMap maps={maps} {...props} /> : <WebMap {...props} />;
+}
+
+/** expo-maps has no heatmap layer: overlapping translucent circles give a similar look. */
+function NativeMap({ maps: mapsModule, name, location, points, colors }: RegionMapProps & { maps: MapsModule }) {
   const { latitude, longitude, latitudeDelta, boundary } = location;
-  const center = useMemo(() => ({ latitude, longitude }), [latitude, longitude]);
-  const zoom = zoomForDelta(latitudeDelta);
-  const useNative =
-    maps !== null &&
-    (Platform.OS === 'ios' || (Platform.OS === 'android' && Boolean(GOOGLE_MAPS_API_KEY)));
+  const center = { latitude, longitude };
+  const top = colors.length - 1;
 
-  const html = useMemo(
-    () =>
-      useNative
-        ? ''
-        : buildMapHtml({
-            name,
-            center,
-            zoom,
-            boundary,
-            heatPoints,
-            showHeat,
-            googleMapsApiKey: GOOGLE_MAPS_API_KEY,
-          }),
-    [useNative, name, center, zoom, boundary, heatPoints, showHeat]
-  );
-
-  // expo-maps has no heatmap layer: overlapping translucent circles give a similar look.
-  const circles = heatPoints.map((point, index) => ({
-    id: `heat-${index}`,
-    center: { latitude: point.latitude, longitude: point.longitude },
-    radius: HEAT_RADIUS * (0.6 + point.intensity * 0.6),
-    color: `rgba(${HEAT_COLOR.join(',')}, ${(0.08 + point.intensity * 0.1).toFixed(2)})`,
-  }));
-
-  const polygons =
-    boundary.length > 2
-      ? [
-          {
-            id: 'boundary',
-            coordinates: boundary,
-            color: 'rgba(229, 57, 53, 0.08)',
-            lineColor: BOUNDARY_COLOR,
-            lineWidth: 2,
-          },
-        ]
-      : [];
-
-  const mapProps = {
-    cameraPosition: { coordinates: center, zoom },
-    circles,
-    polygons,
+  const props = {
+    cameraPosition: { coordinates: center, zoom: zoomForDelta(latitudeDelta) },
+    circles: points.map((point, index) => ({
+      id: `heat-${index}`,
+      center: { latitude: point.latitude, longitude: point.longitude },
+      radius: 120 + point.weight * 220,
+      color: hexToRgba(colors[Math.round(point.weight * top)], 0.18 + point.weight * 0.2),
+    })),
+    polygons:
+      boundary.length > 2
+        ? [
+            {
+              id: 'boundary',
+              coordinates: boundary,
+              color: hexToRgba(BOUNDARY_COLOR, 0.08),
+              lineColor: BOUNDARY_COLOR,
+              lineWidth: 2,
+            },
+          ]
+        : [],
     markers: [{ id: name, coordinates: center, title: name }],
     style: styles.fill,
   };
 
+  return Platform.OS === 'ios' ? (
+    <mapsModule.AppleMaps.View {...props} />
+  ) : (
+    <mapsModule.GoogleMaps.View {...props} />
+  );
+}
+
+/** Leaflet page in a WebView; heat changes are injected without reloading the tiles. */
+function WebMap({ name, location, points, colors }: RegionMapProps) {
+  const webView = useRef<WebView>(null);
+  const { latitude, longitude, latitudeDelta, boundary } = location;
+  const html = useMemo(
+    () =>
+      buildMapHtml({
+        name,
+        center: { latitude, longitude },
+        zoom: zoomForDelta(latitudeDelta),
+        boundary,
+        googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+      }),
+    [name, latitude, longitude, latitudeDelta, boundary]
+  );
+  const script = `window.setHeat(${scriptJson(heatMessage(points, colors))}); true;`;
+
+  const send = () => webView.current?.injectJavaScript(script);
+  // Redraw the heat when it changes; the initial draw happens in onLoadEnd.
+  useEffect(() => {
+    webView.current?.injectJavaScript(script);
+  }, [script]);
+
   return (
-    <View style={styles.container}>
-      {maps && Platform.OS === 'ios' ? (
-        <maps.AppleMaps.View {...mapProps} />
-      ) : maps && useNative ? (
-        <maps.GoogleMaps.View {...mapProps} />
-      ) : (
-        <WebView
-          accessibilityLabel={`Mapa de ${name}`}
-          originWhitelist={['*']}
-          source={{ html }}
-          style={styles.fill}
-        />
-      )}
-      {popularity ? (
-        <HeatmapToggle
-          active={showHeat}
-          onToggle={toggleHeat}
-          period={period}
-          onPeriodChange={setPeriod}
-        />
-      ) : null}
-    </View>
+    <WebView
+      accessibilityLabel={`Mapa de ${name}`}
+      onLoadEnd={send}
+      originWhitelist={['*']}
+      ref={webView}
+      source={{ html }}
+      style={styles.fill}
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    height: 180,
-    overflow: 'hidden',
-    borderRadius: 12,
-  },
   fill: {
     flex: 1,
   },

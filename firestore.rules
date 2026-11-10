@@ -31,6 +31,12 @@ service cloud.firestore {
     match /regions/{slug} {
       allow read: if isAuthenticated();
       allow write: if false;
+
+      // Heatmap points per layer; edited in the Firebase console or by the seed script.
+      match /heatmap_layers/{layerId} {
+        allow read: if isAuthenticated();
+        allow write: if false;
+      }
     }
 
     match /users/{userId} {

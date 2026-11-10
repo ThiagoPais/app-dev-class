@@ -52,6 +52,12 @@ before(async () => {
     body: JSON.stringify({ fields: { name: { stringValue: 'Gama' } } }),
   });
   assert.ok(response.ok, `seed: ${response.status}`);
+  const layer = await fetch(`${url}/heatmap_layers/popularidade`, {
+    method: 'PATCH',
+    headers: { Authorization: 'Bearer owner', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields: { label: { stringValue: 'Popularidade' } } }),
+  });
+  assert.ok(layer.ok, `seed layer: ${layer.status}`);
   alice = client('alice');
   anonymous = client();
 });
@@ -76,4 +82,12 @@ test('clients cannot create, edit, or delete region pages', async () => {
   await denied(setDoc(doc(alice, 'regions', 'nova'), { name: 'Nova' }));
   await denied(updateDoc(doc(alice, 'regions', 'gama'), { name: 'Outro' }));
   await denied(deleteDoc(doc(alice, 'regions', 'gama')));
+});
+
+test('signed-in users can read heatmap layers; clients cannot write them', async () => {
+  const layer = doc(alice, 'regions', 'gama', 'heatmap_layers', 'popularidade');
+  assert.equal((await getDoc(layer)).data().label, 'Popularidade');
+  await denied(getDoc(doc(anonymous, 'regions', 'gama', 'heatmap_layers', 'popularidade')));
+  await denied(setDoc(layer, { label: 'Outro' }));
+  await denied(setDoc(doc(alice, 'regions', 'gama', 'heatmap_layers', 'nova'), { label: 'Nova' }));
 });

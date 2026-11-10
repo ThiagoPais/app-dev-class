@@ -16,7 +16,7 @@ import { LeisureCard } from '../components/leisure-card';
 import { MobilityCard } from '../components/mobility-card';
 import { PhotoGallery } from '../components/photo-gallery';
 import { RegionHeader, RegionHeaderAction } from '../components/region-header';
-import { RegionMap } from '../components/region-map';
+import { RegionMapSection } from '../components/region-map-section';
 import { SafetyCard } from '../components/safety-card';
 import { SurroundingsCard } from '../components/surroundings-card';
 import { TagChips } from '../components/tag-chips';
@@ -99,6 +99,15 @@ function RegionDetail({ region }: { region: RegionDetails }) {
         contentContainerStyle={[styles.content, { paddingBottom: Math.max(bottom, 16) + 8 }]}
         showsVerticalScrollIndicator={false}>
         <PhotoGallery photos={region.photos} />
+        {region.isSample ? (
+          <View accessibilityRole="text" style={styles.sampleNotice}>
+            <Ionicons color="#8A6100" name="information-circle-outline" size={16} />
+            <Text style={styles.sampleText}>
+              Dados de exemplo: os números desta página são ilustrativos e serão substituídos
+              pelos dados oficiais.
+            </Text>
+          </View>
+        ) : null}
         {region.tags.length ? <TagChips tags={region.tags} /> : null}
         {region.description ? <Text style={styles.description}>{region.description}</Text> : null}
 
@@ -124,10 +133,7 @@ function RegionDetail({ region }: { region: RegionDetails }) {
         {region.safety ? <SafetyCard safety={region.safety} /> : null}
 
         <SectionTitle>Localização</SectionTitle>
-        <RegionMap location={region.location} name={region.name} popularity={region.popularity} />
-        {region.popularity?.source ? (
-          <Text style={styles.source}>Popularidade: {region.popularity.source}</Text>
-        ) : null}
+        <RegionMapSection location={region.location} name={region.name} slug={region.slug} />
 
         {!hasCategories ? (
           <Text style={styles.pending}>
@@ -220,10 +226,19 @@ const styles = StyleSheet.create({
   wideColumn: {
     flex: 11,
   },
-  source: {
-    marginTop: -Spacing.two,
-    color: BrandColors.textMuted,
-    fontSize: 11,
+  sampleNotice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#FFF8E6',
+  },
+  sampleText: {
+    flex: 1,
+    color: '#6B4C00',
+    fontSize: 13,
+    lineHeight: 19,
   },
   pending: {
     color: BrandColors.textSecondary,

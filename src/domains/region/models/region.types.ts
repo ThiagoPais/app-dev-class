@@ -67,26 +67,38 @@ export interface RegionLocation extends Coordinate {
   boundary: Coordinate[];
 }
 
-/** Part of the day shown by the popularity heatmap. */
+/** Part of the day shown by the heatmap. */
 export type HeatPeriod = 'madrugada' | 'manha' | 'tarde' | 'noite';
 
+/** One weighted spot of a heatmap layer. `weight` goes from 0 (quiet) to 1 (hottest). */
+export interface HeatPoint extends Coordinate {
+  weight: number;
+}
+
 /**
- * Inputs of the popularity heatmap. The app spreads points around the commercial core and
- * along the main avenue, scaled by how busy each period is (0 to 1).
+ * One heatmap layer of an RA, stored in `regions/{slug}/heatmap_layers/{id}`. Each document
+ * holds the points of every period, so editing a layer in the Firebase console changes the map.
  */
-export interface PopularityInfo {
-  /** Busiest spot, usually the commercial centre. */
-  core: Coordinate;
-  /** Main avenue, drawn as a strip of points from `from` to `to`. */
-  strip: { from: Coordinate; to: Coordinate };
-  periods: Record<HeatPeriod, { core: number; strip: number }>;
-  /** Where the numbers come from, shown under the map. */
+export interface HeatmapLayer {
+  id: string;
+  label: string;
+  /** One line under the map explaining what the colours mean. */
+  description: string;
+  /** Ionicons glyph shown on the layer chip. */
+  icon: string;
+  /** Position among the layer chips (lowest first). */
+  order: number;
+  /** Gradient from low to high, used by the map and the legend. */
+  colors: string[];
   source: string;
+  /** True while the points are placeholders waiting for real data. */
+  isSample: boolean;
+  periods: Record<HeatPeriod, HeatPoint[]>;
 }
 
 /**
  * One document in the Firestore `regions` collection, keyed by slug. Only identity and location
- * are required: RAs still waiting for data show the map and the forum, and skip the other cards.
+ * are required: cards whose section is missing are hidden.
  */
 export interface RegionDetails extends RegionSummary {
   photos: RegionPhoto[];
@@ -98,5 +110,6 @@ export interface RegionDetails extends RegionSummary {
   income: IncomeInfo | null;
   safety: SafetyInfo | null;
   location: RegionLocation;
-  popularity: PopularityInfo | null;
+  /** True while the page shows placeholder numbers; the screen labels them as examples. */
+  isSample: boolean;
 }
