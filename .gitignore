@@ -47,3 +47,6 @@ example
 # generated native folders
 /ios
 /android
+
+# Bun project: npm lockfiles at the root are accidental (functions/ keeps its own)
+/package-lock.json

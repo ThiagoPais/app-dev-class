@@ -12,6 +12,7 @@ type MapsModule = typeof import('expo-maps');
 /**
  * expo-maps ships native code, so importing it throws in Expo Go or in a dev
  * build made before it was installed. Load it lazily and fall back to an OpenStreetMap WebView.
+ * Android's Google Maps SDK draws a blank map without an API key, so it also falls back then.
  */
 function loadMaps(): MapsModule | null {
   if (Platform.OS !== 'ios' && Platform.OS !== 'android') return null;
@@ -72,7 +73,7 @@ export function RegionMap({ city, coordinates }: RegionMapProps) {
     <View style={styles.container}>
       {maps && Platform.OS === 'ios' ? (
         <maps.AppleMaps.View {...mapProps} />
-      ) : maps && Platform.OS === 'android' ? (
+      ) : maps && Platform.OS === 'android' && GOOGLE_MAPS_API_KEY ? (
         <maps.GoogleMaps.View {...mapProps} />
       ) : (
         <WebView
