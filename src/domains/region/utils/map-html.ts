@@ -1,9 +1,12 @@
-import type { Coordinates } from '../constants';
+import type { Coordinate } from '../models/region.types';
 import type { HeatPoint } from './heat-points';
 
 interface MapHtmlOptions {
-  city: string;
-  coordinates: Coordinates;
+  name: string;
+  center: Coordinate;
+  zoom: number;
+  /** Outline of the RA; skipped when it has fewer than three points. */
+  boundary: Coordinate[];
   heatPoints: HeatPoint[];
   showHeat: boolean;
   /** Renders Google Maps when set; falls back to OpenStreetMap otherwise. */
@@ -11,17 +14,31 @@ interface MapHtmlOptions {
 }
 
 const HEAT_COLORS = ['#F7C6D6', '#E96E97', '#B83A6B', '#832D51'];
+const BOUNDARY_COLOR = '#E53935';
 
-/** Google Maps JavaScript API page: marker plus overlapping translucent circles as heat. */
+/** JSON that is safe inside an inline <script>: "</script>" in a name cannot close the tag. */
+function scriptJson(value: unknown) {
+  return JSON.stringify(value).replace(/</g, '\\u003c');
+}
+
+function heatTuples(points: HeatPoint[]) {
+  return points.map((p) => [p.latitude, p.longitude, p.intensity]);
+}
+
+function boundaryTuples(boundary: Coordinate[]) {
+  return boundary.length > 2 ? boundary.map((p) => [p.latitude, p.longitude]) : [];
+}
+
+/** Google Maps JavaScript API page: marker, outline, and overlapping translucent circles as heat. */
 function buildGoogleMapHtml({
-  city,
-  coordinates,
+  name,
+  center,
+  zoom,
+  boundary,
   heatPoints,
   showHeat,
   googleMapsApiKey,
 }: MapHtmlOptions) {
-  const heat = heatPoints.map((p) => [p.latitude, p.longitude, p.intensity]);
-
   return `<!doctype html>
 <html>
 <head>
@@ -37,17 +54,29 @@ function buildGoogleMapHtml({
       '<p>Google Maps recusou a chave (API nao ativada, chave invalida ou restricao de referrer). Veja o console do navegador.</p>';
   };
   function initMap() {
-    var center = { lat: ${coordinates.latitude}, lng: ${coordinates.longitude} };
+    var center = { lat: ${center.latitude}, lng: ${center.longitude} };
     var map = new google.maps.Map(document.getElementById('map'), {
       center: center,
-      zoom: 14,
+      zoom: ${zoom},
       disableDefaultUI: true,
       gestureHandling: 'greedy'
     });
-    new google.maps.Marker({ position: center, map: map, title: ${JSON.stringify(city)} });
+    var outline = ${scriptJson(boundaryTuples(boundary))};
+    if (outline.length) {
+      new google.maps.Polygon({
+        map: map,
+        paths: outline.map(function (p) { return { lat: p[0], lng: p[1] }; }),
+        strokeColor: '${BOUNDARY_COLOR}',
+        strokeWeight: 2,
+        fillColor: '${BOUNDARY_COLOR}',
+        fillOpacity: 0.08,
+        clickable: false
+      });
+    }
+    new google.maps.Marker({ position: center, map: map, title: ${scriptJson(name)} });
     if (${showHeat}) {
-      var colors = ${JSON.stringify(HEAT_COLORS)};
-      ${JSON.stringify(heat)}.forEach(function (p) {
+      var colors = ${scriptJson(HEAT_COLORS)};
+      ${scriptJson(heatTuples(heatPoints))}.forEach(function (p) {
         var i = p[2];
         new google.maps.Circle({
           map: map,
@@ -76,8 +105,7 @@ function buildGoogleMapHtml({
 export function buildMapHtml(options: MapHtmlOptions) {
   if (options.googleMapsApiKey) return buildGoogleMapHtml(options);
 
-  const { city, coordinates, heatPoints, showHeat } = options;
-  const heat = heatPoints.map((p) => [p.latitude, p.longitude, p.intensity]);
+  const { name, center, zoom, boundary, heatPoints, showHeat } = options;
 
   return `<!doctype html>
 <html>
@@ -85,30 +113,50 @@ export function buildMapHtml(options: MapHtmlOptions) {
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
-<style>html,body,#map{height:100%;margin:0}.leaflet-overlay-pane{filter:blur(9px)}</style>
+<style>html,body,#map{height:100%;margin:0}.leaflet-heat-pane{filter:blur(9px)}</style>
 </head>
 <body>
 <div id="map"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
   var map = L.map('map', { zoomControl: false, attributionControl: false })
-    .setView([${coordinates.latitude}, ${coordinates.longitude}], 14);
+    .setView([${center.latitude}, ${center.longitude}], ${zoom});
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
   L.control.attribution({ prefix: false }).addAttribution('© OpenStreetMap').addTo(map);
-  L.marker([${coordinates.latitude}, ${coordinates.longitude}]).addTo(map).bindTooltip(${JSON.stringify(city)});
+  var outline = ${scriptJson(boundaryTuples(boundary))};
+  if (outline.length) {
+    L.polygon(outline, {
+      color: '${BOUNDARY_COLOR}',
+      weight: 2,
+      dashArray: '6 4',
+      fillColor: '${BOUNDARY_COLOR}',
+      fillOpacity: 0.08,
+      interactive: false
+    }).addTo(map);
+  }
+  L.marker([${center.latitude}, ${center.longitude}]).addTo(map).bindTooltip(${scriptJson(name)});
   if (${showHeat}) {
-    var group = L.layerGroup().addTo(map);
-    ${JSON.stringify(heat)}.forEach(function (p) {
+    // Own pane so the blur softens the heat circles but not the RA outline.
+    map.createPane('heat').style.zIndex = 450;
+    ${scriptJson(heatTuples(heatPoints))}.forEach(function (p) {
       var i = p[2];
       L.circle([p[0], p[1]], {
+        pane: 'heat',
         radius: 70 + i * 90,
         stroke: false,
         fillColor: i > 0.75 ? '#832D51' : i > 0.5 ? '#B83A6B' : i > 0.3 ? '#E96E97' : '#F7C6D6',
-        fillOpacity: 0.22
-      }).addTo(group);
+        fillOpacity: 0.22,
+        interactive: false
+      }).addTo(map);
     });
   }
 </script>
 </body>
 </html>`;
+}
+
+/** Map zoom that roughly fits a latitude span (in degrees) into the preview. */
+export function zoomForDelta(latitudeDelta: number) {
+  const zoom = Math.round(Math.log2(360 / Math.max(latitudeDelta, 0.001)));
+  return Math.min(16, Math.max(10, zoom));
 }

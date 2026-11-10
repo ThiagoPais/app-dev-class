@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text } from 'react-native';
 
 import { CardFeed } from '@/components/card-feed';
 import { BrandColors } from '@/shared/constants/colors';
+import { slugify } from '@/shared/utils/slugify';
 
 import type { CityOverview } from '../hooks/use-city-overview';
 import { formatRelativeTime, isRecentlyActive } from '../utils/format';
@@ -36,7 +37,9 @@ export function CityCard({ overview, onPress }: { overview: CityOverview; onPres
             accessibilityLabel={`Ver detalhes de ${city}`}
             accessibilityRole="button"
             hitSlop={6}
-            onPress={() => router.push({ pathname: '/region/[city]', params: { city } })}
+            onPress={() =>
+              router.push({ pathname: '/region/[slug]', params: { slug: slugify(city) } })
+            }
             style={({ pressed }) => [styles.detailsButton, pressed && styles.pressed]}>
             <Ionicons color={BrandColors.primary} name="information-circle-outline" size={14} />
             <Text style={styles.detailsText}>Sobre a região</Text>

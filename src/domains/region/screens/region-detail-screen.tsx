@@ -1,191 +1,183 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Spacing } from '@/constants/theme';
 import { useTopCityTopics } from '@/domains/forum';
-import { UserAvatar } from '@/shared/components/ui';
+import { AppButton } from '@/shared/components/ui';
 import { BrandColors } from '@/shared/constants/colors';
+import { SCREEN_MAX_WIDTH } from '@/shared/constants/layout';
 
-import { IncomeChart } from '../components/income-chart';
-import { RegionCard } from '../components/region-card';
+import { ForumHighlightCard } from '../components/forum-highlight-card';
+import { IncomeCard } from '../components/income-card';
+import { LeisureCard } from '../components/leisure-card';
+import { MobilityCard } from '../components/mobility-card';
+import { PhotoGallery } from '../components/photo-gallery';
+import { RegionHeader, RegionHeaderAction } from '../components/region-header';
 import { RegionMap } from '../components/region-map';
-import { SafetyChart } from '../components/safety-chart';
-import { DF_CENTER, REGION_COORDINATES } from '../constants';
-import { FORUM_HIGHLIGHTS_MOCK, REGION_DETAILS_MOCK } from '../mocks/region.mock';
+import { SafetyCard } from '../components/safety-card';
+import { SurroundingsCard } from '../components/surroundings-card';
+import { TagChips } from '../components/tag-chips';
+import { useRegionDetails } from '../hooks/use-region-details';
+import type { RegionDetails } from '../models/region.types';
+import { listRegions } from '../services/region.service';
 
-const PHOTO_COLORS = ['#9FB1A0', '#D9C77A', '#7FA3B8'];
+export function RegionDetailScreen({ slug }: { slug: string }) {
+  const { region, isLoading, errorMessage, retry } = useRegionDetails(slug);
+  const fallbackName = listRegions().find((entry) => entry.slug === slug)?.name ?? 'Região';
 
-function goBack() {
-  if (router.canGoBack()) router.back();
-  else router.replace('/(logged)/(tabs)/forum');
-}
-
-/** Overview of one RA (photos, indicators and forum highlights), still on mocked data. */
-export function RegionDetailScreen({ city }: { city: string }) {
-  const { bottom } = useSafeAreaInsets();
-  const details = REGION_DETAILS_MOCK;
-  const { topics: topTopics, isLoading: isLoadingTopics } = useTopCityTopics(city);
-
-  // Falls back to the mock when the RA has no topics yet (or they failed to load).
-  const highlights = topTopics.length
-    ? topTopics.map((topic) => ({
-        id: topic.id,
-        authorName: topic.authorSnapshot.fullName,
-        avatarUrl: topic.authorSnapshot.avatarUrl,
-        votes: topic.netVotes,
-        title: topic.title,
-        content: topic.content,
-        isMock: false,
-      }))
-    : isLoadingTopics
-      ? []
-      : FORUM_HIGHLIGHTS_MOCK.map((highlight) => ({ ...highlight, isMock: true }));
+  if (region) {
+    return <RegionDetail region={region} />;
+  }
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
-      <View style={styles.header}>
-        <Pressable
-          accessibilityLabel="Voltar"
-          accessibilityRole="button"
-          hitSlop={8}
-          onPress={goBack}
-          style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
-          <Ionicons color={BrandColors.white} name="arrow-back" size={20} />
-        </Pressable>
-        <Text numberOfLines={1} style={styles.headerTitle}>
-          {city}
-        </Text>
-        {/* <Ionicons color={BrandColors.textPrimary} name="heart-outline" size={20} />
-        <Ionicons color={BrandColors.textPrimary} name="share-social-outline" size={20} /> */}
-      </View>
+      <RegionHeader title={fallbackName} />
+      {isLoading ? (
+        <ActivityIndicator color={BrandColors.primary} style={styles.loading} />
+      ) : (
+        <View style={styles.empty}>
+          <Ionicons
+            color={BrandColors.textMuted}
+            name={errorMessage ? 'cloud-offline-outline' : 'map-outline'}
+            size={36}
+          />
+          <Text style={styles.emptyText}>
+            {errorMessage ?? 'Ainda não temos dados sobre esta região. Volte em breve!'}
+          </Text>
+          {errorMessage ? (
+            <AppButton onPress={retry} style={styles.retry} title="Tentar novamente" variant="outline" />
+          ) : null}
+        </View>
+      )}
+    </SafeAreaView>
+  );
+}
+
+function RegionDetail({ region }: { region: RegionDetails }) {
+  const { bottom } = useSafeAreaInsets();
+  const [isFavorite, setIsFavorite] = useState(false);
+  const {
+    topics,
+    isLoading: isLoadingTopics,
+    errorMessage: topicsError,
+  } = useTopCityTopics(region.forumCity);
+  const hasCategories = Boolean(
+    region.mobility || region.surroundings || region.leisure || region.income || region.safety
+  );
+
+  const share = async () => {
+    try {
+      await Share.share({
+        message: region.description ? `${region.name}: ${region.description}` : region.name,
+      });
+    } catch {
+      // Sharing is unavailable in some browsers; nothing to recover.
+    }
+  };
+
+  return (
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
+      <RegionHeader
+        right={
+          <>
+            <RegionHeaderAction
+              color={isFavorite ? BrandColors.primary : BrandColors.textPrimary}
+              icon={isFavorite ? 'heart' : 'heart-outline'}
+              label={isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+              onPress={() => setIsFavorite((current) => !current)}
+            />
+            <RegionHeaderAction icon="share-social-outline" label="Compartilhar" onPress={share} />
+          </>
+        }
+        title={region.name}
+      />
 
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: Math.max(bottom, 16) + 24 }]}
+        contentContainerStyle={[styles.content, { paddingBottom: Math.max(bottom, 16) + 8 }]}
         showsVerticalScrollIndicator={false}>
-        <View style={styles.gallery}>
-          <View style={[styles.photo, styles.photoMain, { backgroundColor: PHOTO_COLORS[0] }]}>
-            <Ionicons color={BrandColors.white} name="image-outline" size={32} />
-          </View>
-          <View style={styles.photoColumn}>
-            <View style={[styles.photo, styles.photoSmall, { backgroundColor: PHOTO_COLORS[1] }]} />
-            <View style={[styles.photo, styles.photoSmall, { backgroundColor: PHOTO_COLORS[2] }]}>
-              <View style={styles.photoOverlay}>
-                <Text style={styles.photoOverlayText}>+{details.extraPhotos} fotos</Text>
+        <PhotoGallery photos={region.photos} />
+        {region.tags.length ? <TagChips tags={region.tags} /> : null}
+        {region.description ? <Text style={styles.description}>{region.description}</Text> : null}
+
+        {hasCategories ? <SectionTitle>Principais categorias</SectionTitle> : null}
+        {region.mobility || region.surroundings || region.leisure ? (
+          <View style={styles.columns}>
+            {region.mobility || region.surroundings ? (
+              <View style={[styles.column, styles.narrowColumn]}>
+                {region.mobility ? <MobilityCard mobility={region.mobility} /> : null}
+                {region.surroundings ? (
+                  <SurroundingsCard surroundings={region.surroundings} />
+                ) : null}
               </View>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.tags}>
-          {details.tags.map((tag) => (
-            <View key={tag} style={styles.tag}>
-              <Text style={styles.tagText}>{tag}</Text>
-            </View>
-          ))}
-        </View>
-
-        <Text style={styles.description}>{details.description}</Text>
-
-        <Text style={styles.sectionTitle}>Principais categorias</Text>
-        <View style={styles.columns}>
-          <View style={styles.column}>
-            <RegionCard title="Mobilidade">
-              <Text style={styles.smallText}>{details.mobility.text}</Text>
-              <View style={styles.modes}>
-                {details.mobility.modes.map((mode) => (
-                  <View key={mode.label} style={styles.mode}>
-                    <Ionicons color={BrandColors.primary} name={mode.icon} size={16} />
-                    <Text style={styles.modeLabel}>{mode.label}</Text>
-                  </View>
-                ))}
+            ) : null}
+            {region.leisure ? (
+              <View style={[styles.column, styles.wideColumn]}>
+                <LeisureCard leisure={region.leisure} />
               </View>
-              <Text style={styles.source}>{details.mobility.source}</Text>
-            </RegionCard>
-
-            <RegionCard title={details.residents.title}>
-              {details.residents.items.map((item) => (
-                <View key={item} style={styles.checkRow}>
-                  <Ionicons color="#4C9A2A" name="checkmark-circle" size={13} />
-                  <Text style={styles.smallText}>{item}</Text>
-                </View>
-              ))}
-              <Text style={styles.source}>PDAD 2021</Text>
-            </RegionCard>
+            ) : null}
           </View>
+        ) : null}
+        {region.income ? <IncomeCard income={region.income} regionName={region.name} /> : null}
+        {region.safety ? <SafetyCard safety={region.safety} /> : null}
 
-          <View style={styles.column}>
-            <RegionCard title="Lazer">
-              {details.leisure.map((item) => (
-                <View key={item.label} style={styles.leisureRow}>
-                  <View style={styles.leisureHeader}>
-                    <Text numberOfLines={1} style={styles.leisureLabel}>
-                      {item.label}
-                    </Text>
-                    <Text style={styles.leisureValue}>{item.percent}%</Text>
-                  </View>
-                  <View style={styles.track}>
-                    <View style={[styles.fill, { width: `${item.percent}%` }]} />
-                  </View>
-                </View>
-              ))}
-              <Text style={styles.source}>PDAD 2021</Text>
-            </RegionCard>
-          </View>
-        </View>
+        <SectionTitle>Localização</SectionTitle>
+        <RegionMap location={region.location} name={region.name} popularity={region.popularity} />
+        {region.popularity?.source ? (
+          <Text style={styles.source}>Popularidade: {region.popularity.source}</Text>
+        ) : null}
 
-        <RegionCard title="Rendimento domiciliar">
-          <Text style={styles.smallText}>{details.income.summary}</Text>
-          <IncomeChart bars={details.income.bars} />
-          <Text style={styles.source}>{details.income.source}</Text>
-        </RegionCard>
+        {!hasCategories ? (
+          <Text style={styles.pending}>
+            Ainda estamos reunindo os indicadores desta região. Enquanto isso, veja o que os
+            moradores contam no fórum.
+          </Text>
+        ) : null}
 
-        <RegionCard title="Segurança">
-          <SafetyChart series={details.safety.series} />
-          <Text style={styles.source}>{details.safety.note}</Text>
-        </RegionCard>
-
-        <Text style={styles.sectionTitle}>Localização</Text>
-        <RegionMap city={city} coordinates={REGION_COORDINATES[city] ?? DF_CENTER} />
-
-        <Text style={styles.sectionTitle}>Destaques do fórum</Text>
+        <SectionTitle>Destaques do fórum</SectionTitle>
         {isLoadingTopics ? <ActivityIndicator color={BrandColors.primary} /> : null}
-        {highlights.map((highlight) => (
-          <Pressable
-            accessibilityRole="button"
-            disabled={highlight.isMock}
-            key={highlight.id}
+        {!isLoadingTopics && !topics.length ? (
+          <Text style={styles.pending}>
+            {topicsError ?? 'Ninguém publicou sobre esta região ainda. Que tal começar?'}
+          </Text>
+        ) : null}
+        {topics.map((topic) => (
+          <ForumHighlightCard
+            highlight={{
+              id: topic.id,
+              authorName: topic.authorSnapshot.fullName,
+              avatarUrl: topic.authorSnapshot.avatarUrl,
+              votes: topic.netVotes,
+              title: topic.title,
+              content: topic.content,
+            }}
+            key={topic.id}
             onPress={() =>
-              router.push({ pathname: '/forum/[topicId]', params: { topicId: highlight.id } })
+              router.push({ pathname: '/forum/[topicId]', params: { topicId: topic.id } })
             }
-            style={({ pressed }) => pressed && styles.pressed}>
-            <RegionCard>
-              <View style={styles.postHeader}>
-                <UserAvatar avatarUrl={highlight.avatarUrl} name={highlight.authorName} size={26} />
-                <Text numberOfLines={1} style={styles.postAuthor}>
-                  {highlight.authorName}
-                </Text>
-                <Ionicons color={BrandColors.textMuted} name="heart-outline" size={12} />
-                <Text style={styles.postLikes}>{highlight.votes}</Text>
-              </View>
-              <Text numberOfLines={1} style={styles.postTitle}>
-                {highlight.title}
-              </Text>
-              <Text numberOfLines={3} style={styles.postText}>
-                {highlight.content}
-              </Text>
-            </RegionCard>
-          </Pressable>
+          />
         ))}
 
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.push({ pathname: '/forum/ra/[city]', params: { city } })}
-          style={({ pressed }) => [styles.forumButton, pressed && styles.pressed]}>
-          <Text style={styles.forumButtonText}>Ver fórum completo</Text>
-        </Pressable>
+        <AppButton
+          onPress={() =>
+            router.push({ pathname: '/forum/ra/[city]', params: { city: region.forumCity } })
+          }
+          style={styles.forumButton}
+          textStyle={styles.forumButtonText}
+          title="Ver fórum completo"
+        />
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function SectionTitle({ children }: { children: string }) {
+  return (
+    <Text accessibilityRole="header" style={styles.sectionTitle}>
+      {children}
+    </Text>
   );
 }
 
@@ -193,99 +185,26 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     width: '100%',
-    maxWidth: 430,
+    maxWidth: SCREEN_MAX_WIDTH,
     alignSelf: 'center',
-    backgroundColor: BrandColors.white,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  backButton: {
-    width: 30,
-    height: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 15,
-    backgroundColor: '#78951A',
-  },
-  headerTitle: {
-    flex: 1,
-    color: BrandColors.textPrimary,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  pressed: {
-    opacity: 0.8,
+    backgroundColor: BrandColors.background,
   },
   content: {
-    gap: 14,
-    paddingHorizontal: 16,
-  },
-  gallery: {
-    flexDirection: 'row',
-    gap: 6,
-    height: 150,
-  },
-  photo: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    borderRadius: 12,
-  },
-  photoMain: {
-    flex: 2,
-  },
-  photoColumn: {
-    flex: 1,
-    gap: 6,
-  },
-  photoSmall: {
-    flex: 1,
-  },
-  photoOverlay: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-  },
-  photoOverlayText: {
-    color: BrandColors.white,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  tags: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  tag: {
-    paddingVertical: 3,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    backgroundColor: BrandColors.secondary,
-  },
-  tagText: {
-    color: BrandColors.white,
-    fontSize: 10,
-    fontWeight: '500',
+    gap: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.one,
   },
   description: {
     color: BrandColors.textPrimary,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 15,
+    lineHeight: 24,
   },
   sectionTitle: {
-    marginTop: 4,
+    marginTop: Spacing.two,
     color: BrandColors.textPrimary,
-    fontSize: 15,
+    fontSize: 22,
     fontWeight: '700',
+    letterSpacing: -0.4,
   },
   columns: {
     flexDirection: 'row',
@@ -293,97 +212,47 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   column: {
-    flex: 1,
     gap: 10,
   },
-  smallText: {
-    color: BrandColors.textSecondary,
-    fontSize: 10,
-    lineHeight: 15,
+  narrowColumn: {
+    flex: 9,
+  },
+  wideColumn: {
+    flex: 11,
   },
   source: {
-    color: BrandColors.textMuted,
-    fontSize: 8,
-  },
-  modes: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  mode: {
-    alignItems: 'center',
-    gap: 2,
-  },
-  modeLabel: {
-    color: BrandColors.textSecondary,
-    fontSize: 8,
-  },
-  checkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  leisureRow: {
-    gap: 3,
-  },
-  leisureHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 4,
-  },
-  leisureLabel: {
-    flexShrink: 1,
-    color: BrandColors.textPrimary,
-    fontSize: 9,
-  },
-  leisureValue: {
-    color: BrandColors.textPrimary,
-    fontSize: 9,
-  },
-  track: {
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: '#F0D9E2',
-  },
-  fill: {
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: BrandColors.primary,
-  },
-  postHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  postAuthor: {
-    flex: 1,
-    color: BrandColors.textPrimary,
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  postLikes: {
+    marginTop: -Spacing.two,
     color: BrandColors.textMuted,
     fontSize: 11,
   },
-  postTitle: {
-    color: BrandColors.textPrimary,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  postText: {
+  pending: {
     color: BrandColors.textSecondary,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 21,
   },
   forumButton: {
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 22,
-    backgroundColor: BrandColors.primary,
+    height: 52,
+    marginTop: Spacing.two,
+    borderRadius: 26,
   },
   forumButtonText: {
-    color: BrandColors.white,
-    fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '500',
+  },
+  loading: {
+    marginTop: Spacing.six,
+  },
+  empty: {
+    alignItems: 'center',
+    gap: Spacing.three,
+    marginTop: Spacing.six,
+    paddingHorizontal: Spacing.four,
+  },
+  emptyText: {
+    color: BrandColors.textSecondary,
+    fontSize: 15,
+    textAlign: 'center',
+  },
+  retry: {
+    width: 'auto',
   },
 });

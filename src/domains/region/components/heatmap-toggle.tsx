@@ -3,7 +3,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BrandColors } from '@/shared/constants/colors';
 
-import { HEAT_PERIODS, type HeatPeriod } from '../utils/heat-points';
+import type { HeatPeriod } from '../models/region.types';
+import { HEAT_PERIODS } from '../utils/heat-points';
 
 interface HeatmapToggleProps {
   active: boolean;

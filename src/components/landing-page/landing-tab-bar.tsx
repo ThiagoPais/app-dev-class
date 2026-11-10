@@ -6,7 +6,6 @@ import { useAuth } from '@/domains/auth';
 import { BrandColors } from '@/shared/constants/colors';
 
 import { LandingTabButton } from './landing-tab-button';
-import { LandingTabPlaceholder } from './landing-tab-placeholder';
 
 export function LandingTabBar() {
   const { bottom } = useSafeAreaInsets();
@@ -21,10 +20,12 @@ export function LandingTabBar() {
             label="Início"
           />
         </TabTrigger>
-        <LandingTabPlaceholder
-          icon={{ ios: 'magnifyingglass', android: 'search', web: 'search' }}
-          label="Buscar"
-        />
+        <TabTrigger name="search" asChild>
+          <LandingTabButton
+            icon={{ ios: 'magnifyingglass', android: 'search', web: 'search' }}
+            label="Buscar"
+          />
+        </TabTrigger>
         <TabTrigger name="forum" asChild>
           <LandingTabButton
             icon={{ ios: 'bubble.left', android: 'chat_bubble_outline', web: 'chat_bubble_outline' }}

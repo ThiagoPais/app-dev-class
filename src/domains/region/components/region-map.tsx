@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
-import { getHeatPoints, type HeatPeriod } from '../utils/heat-points';
-import { buildMapHtml } from '../utils/map-html';
+import { useHeatmap } from '../hooks/use-heatmap';
+import type { PopularityInfo, RegionLocation } from '../models/region.types';
+import { buildMapHtml, zoomForDelta } from '../utils/map-html';
 import { GOOGLE_MAPS_API_KEY } from '../utils/maps-key';
 import { HeatmapToggle } from './heatmap-toggle';
 
@@ -27,45 +28,68 @@ function loadMaps(): MapsModule | null {
 const maps = loadMaps();
 
 interface RegionMapProps {
-  city: string;
-  coordinates: { latitude: number; longitude: number };
+  name: string;
+  location: RegionLocation;
+  popularity: PopularityInfo | null;
 }
 
 /** Circle radius (metres) and base colour of the native heat approximation. */
 const HEAT_RADIUS = 110;
 const HEAT_COLOR = [233, 110, 151];
+const BOUNDARY_COLOR = '#E53935';
 
-/** Map centred on the RA with a popularity heatmap toggle; OpenStreetMap where expo-maps is missing. */
-export function RegionMap({ city, coordinates }: RegionMapProps) {
-  const [showHeat, setShowHeat] = useState(false);
-  const [period, setPeriod] = useState<HeatPeriod>('noite');
-  const heatPoints = useMemo(() => getHeatPoints(coordinates, period), [coordinates, period]);
+/** Map centred on the RA with its outline and a popularity heatmap toggle. */
+export function RegionMap({ name, location, popularity }: RegionMapProps) {
+  const { showHeat, toggleHeat, period, setPeriod, heatPoints } = useHeatmap(popularity);
+  const { latitude, longitude, latitudeDelta, boundary } = location;
+  const center = useMemo(() => ({ latitude, longitude }), [latitude, longitude]);
+  const zoom = zoomForDelta(latitudeDelta);
+  const useNative =
+    maps !== null &&
+    (Platform.OS === 'ios' || (Platform.OS === 'android' && Boolean(GOOGLE_MAPS_API_KEY)));
+
   const html = useMemo(
     () =>
-      buildMapHtml({
-        city,
-        coordinates,
-        heatPoints,
-        showHeat,
-        googleMapsApiKey: GOOGLE_MAPS_API_KEY,
-      }),
-    [city, coordinates, heatPoints, showHeat]
+      useNative
+        ? ''
+        : buildMapHtml({
+            name,
+            center,
+            zoom,
+            boundary,
+            heatPoints,
+            showHeat,
+            googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+          }),
+    [useNative, name, center, zoom, boundary, heatPoints, showHeat]
   );
 
   // expo-maps has no heatmap layer: overlapping translucent circles give a similar look.
-  const circles = showHeat
-    ? heatPoints.map((point, index) => ({
-        id: `heat-${index}`,
-        center: { latitude: point.latitude, longitude: point.longitude },
-        radius: HEAT_RADIUS * (0.6 + point.intensity * 0.6),
-        color: `rgba(${HEAT_COLOR.join(',')}, ${(0.08 + point.intensity * 0.1).toFixed(2)})`,
-      }))
-    : [];
+  const circles = heatPoints.map((point, index) => ({
+    id: `heat-${index}`,
+    center: { latitude: point.latitude, longitude: point.longitude },
+    radius: HEAT_RADIUS * (0.6 + point.intensity * 0.6),
+    color: `rgba(${HEAT_COLOR.join(',')}, ${(0.08 + point.intensity * 0.1).toFixed(2)})`,
+  }));
+
+  const polygons =
+    boundary.length > 2
+      ? [
+          {
+            id: 'boundary',
+            coordinates: boundary,
+            color: 'rgba(229, 57, 53, 0.08)',
+            lineColor: BOUNDARY_COLOR,
+            lineWidth: 2,
+          },
+        ]
+      : [];
 
   const mapProps = {
-    cameraPosition: { coordinates, zoom: 13 },
+    cameraPosition: { coordinates: center, zoom },
     circles,
-    markers: [{ id: city, coordinates, title: city }],
+    polygons,
+    markers: [{ id: name, coordinates: center, title: name }],
     style: styles.fill,
   };
 
@@ -73,22 +97,24 @@ export function RegionMap({ city, coordinates }: RegionMapProps) {
     <View style={styles.container}>
       {maps && Platform.OS === 'ios' ? (
         <maps.AppleMaps.View {...mapProps} />
-      ) : maps && Platform.OS === 'android' && GOOGLE_MAPS_API_KEY ? (
+      ) : maps && useNative ? (
         <maps.GoogleMaps.View {...mapProps} />
       ) : (
         <WebView
-          accessibilityLabel={`Mapa de ${city}`}
+          accessibilityLabel={`Mapa de ${name}`}
           originWhitelist={['*']}
           source={{ html }}
           style={styles.fill}
         />
       )}
-      <HeatmapToggle
-        active={showHeat}
-        onToggle={() => setShowHeat((current) => !current)}
-        period={period}
-        onPeriodChange={setPeriod}
-      />
+      {popularity ? (
+        <HeatmapToggle
+          active={showHeat}
+          onToggle={toggleHeat}
+          period={period}
+          onPeriodChange={setPeriod}
+        />
+      ) : null}
     </View>
   );
 }

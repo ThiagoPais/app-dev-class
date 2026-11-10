@@ -1,0 +1,207 @@
+{
+  "slug": "nucleo-bandeirante",
+  "name": "Núcleo Bandeirante",
+  "forumCity": "Núcleo Bandeirante",
+  "photos": [],
+  "tags": [
+    "Bem-localizado",
+    "Custo-benefício"
+  ],
+  "description": "O Núcleo Bandeirante fica entre o Plano Piloto, o Park Way, o Riacho Fundo e o Aeroporto, com acesso direto pela EPTG e EPIA. O custo de vida é mais baixo que no Plano Piloto, apesar da proximidade. A região é conhecida como \"Cidade Livre\" antes da construção de Brasília, e ainda mantém ruas estreitas e ritmo tranquilo.",
+  "mobility": {
+    "title": "Mobilidade",
+    "summary": "A obra de ligação entre o Guará, o Park Way e o Núcleo Bandeirante foi duplicada e entregue recentemente.",
+    "modes": [
+      {
+        "mode": "metro",
+        "label": "Metrô",
+        "available": true
+      },
+      {
+        "mode": "bus",
+        "label": "Ônibus",
+        "available": true
+      },
+      {
+        "mode": "bike",
+        "label": "Ciclovia",
+        "available": true
+      }
+    ],
+    "source": "STPC/DF 2025"
+  },
+  "surroundings": {
+    "title": "Moradores afirmaram ter na rua ou nas proximidades",
+    "items": [
+      "Rua asfaltada",
+      "Rua iluminada",
+      "Rua com calçada",
+      "Drenagem de chuva"
+    ],
+    "source": "PDAD 2021"
+  },
+  "leisure": {
+    "title": "Lazer",
+    "items": [
+      {
+        "label": "Ponto de ônibus",
+        "percentage": 95
+      },
+      {
+        "label": "Ruas arborizadas",
+        "percentage": 92.3
+      },
+      {
+        "label": "Quadras esportivas",
+        "percentage": 92.1
+      },
+      {
+        "label": "Praça",
+        "percentage": 90.5
+      },
+      {
+        "label": "Academia/PEC",
+        "percentage": 89.7
+      },
+      {
+        "label": "Travessia sinalizada",
+        "percentage": 87
+      },
+      {
+        "label": "Jardins/Parques",
+        "percentage": 81.4
+      },
+      {
+        "label": "Ciclovia/Ciclofaixa",
+        "percentage": 70.3
+      },
+      {
+        "label": "Espaço cultural",
+        "percentage": 67.5
+      }
+    ],
+    "source": "PDAD 2021"
+  },
+  "income": {
+    "title": "Rendimento domiciliar",
+    "description": "Comparado às demais RAs do DF, o Núcleo Bandeirante está na faixa de renda média-alta. A renda domiciliar média mensal gira em torno de R$ 5.210,30 (a maior parte dos domicílios concentra de 2 a 5 salários mínimos).",
+    "ranking": [
+      {
+        "region": "Lago Sul",
+        "value": 13820.4
+      },
+      {
+        "region": "Park Way",
+        "value": 12150.0
+      },
+      {
+        "region": "Asa Norte",
+        "value": 11012.6
+      },
+      {
+        "region": "Asa Sul",
+        "value": 10890.3
+      },
+      {
+        "region": "Lago Norte",
+        "value": 10540.8
+      },
+      {
+        "region": "Sudoeste/Octogonal",
+        "value": 10210.5
+      },
+      {
+        "region": "Jardim Botânico",
+        "value": 9860.2
+      },
+      {
+        "region": "Águas Claras",
+        "value": 9420.7
+      },
+      {
+        "region": "Cruzeiro",
+        "value": 8130.9
+      },
+      {
+        "region": "Guará",
+        "value": 7640.1
+      },
+      {
+        "region": "Vicente Pires",
+        "value": 6920.4
+      },
+      {
+        "region": "Arniqueira",
+        "value": 6310.0
+      },
+      {
+        "region": "Taguatinga",
+        "value": 5780.6
+      },
+      {
+        "region": "Núcleo Bandeirante",
+        "value": 5210.3
+      },
+      {
+        "region": "Sobradinho",
+        "value": 4660.9
+      },
+      {
+        "region": "Gama",
+        "value": 3990.2
+      },
+      {
+        "region": "Ceilândia",
+        "value": 3420.5
+      },
+      {
+        "region": "Planaltina",
+        "value": 2950.8
+      }
+    ],
+    "source": "PDAD 2024"
+  },
+  "safety": {
+    "title": "Segurança",
+    "axisTicks": [
+      0,
+      10,
+      25,
+      50,
+      100,
+      150
+    ],
+    "occurrences": [
+      {
+        "label": "Homicídio",
+        "count": 4
+      },
+      {
+        "label": "Roubo a transeunte",
+        "count": 12
+      },
+      {
+        "label": "Furto em veículo",
+        "count": 112
+      },
+      {
+        "label": "Roubo de veículo",
+        "count": 8
+      },
+      {
+        "label": "Roubo em comércio",
+        "count": 10
+      },
+      {
+        "label": "Furto de veículo",
+        "count": 90
+      },
+      {
+        "label": "Furto a pedestre",
+        "count": 22
+      }
+    ],
+    "summary": "Total de ocorrências abaixo da média do DF",
+    "source": "SSP-DF 2025"
+  }
+}

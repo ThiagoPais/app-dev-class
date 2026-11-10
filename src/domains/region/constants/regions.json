@@ -1,0 +1,335 @@
+[
+  {
+    "slug": "agua-quente",
+    "name": "Água Quente",
+    "forumCity": "Água Quente",
+    "center": {
+      "latitude": -15.9419,
+      "longitude": -48.2332
+    }
+  },
+  {
+    "slug": "aguas-claras",
+    "name": "Águas Claras",
+    "forumCity": "Águas Claras",
+    "center": {
+      "latitude": -15.842,
+      "longitude": -48.0281
+    }
+  },
+  {
+    "slug": "arapoanga",
+    "name": "Arapoanga",
+    "forumCity": "Arapoanga",
+    "center": {
+      "latitude": -15.6422,
+      "longitude": -47.6515
+    }
+  },
+  {
+    "slug": "arniqueira",
+    "name": "Arniqueira",
+    "forumCity": "Arniqueira",
+    "center": {
+      "latitude": -15.859,
+      "longitude": -48.0122
+    }
+  },
+  {
+    "slug": "asa-norte",
+    "name": "Asa Norte",
+    "forumCity": "Plano Piloto",
+    "center": {
+      "latitude": -15.7635,
+      "longitude": -47.8845
+    }
+  },
+  {
+    "slug": "asa-sul",
+    "name": "Asa Sul",
+    "forumCity": "Plano Piloto",
+    "center": {
+      "latitude": -15.815,
+      "longitude": -47.905
+    }
+  },
+  {
+    "slug": "brazlandia",
+    "name": "Brazlândia",
+    "forumCity": "Brazlândia",
+    "center": {
+      "latitude": -15.6809,
+      "longitude": -48.1943
+    }
+  },
+  {
+    "slug": "candangolandia",
+    "name": "Candangolândia",
+    "forumCity": "Candangolândia",
+    "center": {
+      "latitude": -15.8537,
+      "longitude": -47.9494
+    }
+  },
+  {
+    "slug": "ceilandia",
+    "name": "Ceilândia",
+    "forumCity": "Ceilândia",
+    "center": {
+      "latitude": -15.8173,
+      "longitude": -48.1046
+    }
+  },
+  {
+    "slug": "cruzeiro",
+    "name": "Cruzeiro",
+    "forumCity": "Cruzeiro",
+    "center": {
+      "latitude": -15.7908,
+      "longitude": -47.9374
+    }
+  },
+  {
+    "slug": "fercal",
+    "name": "Fercal",
+    "forumCity": "Fercal",
+    "center": {
+      "latitude": -15.6002,
+      "longitude": -47.8716
+    }
+  },
+  {
+    "slug": "gama",
+    "name": "Gama",
+    "forumCity": "Gama",
+    "center": {
+      "latitude": -16.0171,
+      "longitude": -48.0653
+    }
+  },
+  {
+    "slug": "guara",
+    "name": "Guará",
+    "forumCity": "Guará",
+    "center": {
+      "latitude": -15.8236,
+      "longitude": -47.9768
+    }
+  },
+  {
+    "slug": "itapoa",
+    "name": "Itapoã",
+    "forumCity": "Itapoã",
+    "center": {
+      "latitude": -15.7485,
+      "longitude": -47.7697
+    }
+  },
+  {
+    "slug": "jardim-botanico",
+    "name": "Jardim Botânico",
+    "forumCity": "Jardim Botânico",
+    "center": {
+      "latitude": -15.8639,
+      "longitude": -47.7885
+    }
+  },
+  {
+    "slug": "lago-norte",
+    "name": "Lago Norte",
+    "forumCity": "Lago Norte",
+    "center": {
+      "latitude": -15.7342,
+      "longitude": -47.8642
+    }
+  },
+  {
+    "slug": "lago-sul",
+    "name": "Lago Sul",
+    "forumCity": "Lago Sul",
+    "center": {
+      "latitude": -15.8392,
+      "longitude": -47.8755
+    }
+  },
+  {
+    "slug": "nucleo-bandeirante",
+    "name": "Núcleo Bandeirante",
+    "forumCity": "Núcleo Bandeirante",
+    "center": {
+      "latitude": -15.8712,
+      "longitude": -47.968
+    }
+  },
+  {
+    "slug": "paranoa",
+    "name": "Paranoá",
+    "forumCity": "Paranoá",
+    "center": {
+      "latitude": -15.7754,
+      "longitude": -47.7798
+    }
+  },
+  {
+    "slug": "park-way",
+    "name": "Park Way",
+    "forumCity": "Park Way",
+    "center": {
+      "latitude": -15.9027,
+      "longitude": -47.9633
+    }
+  },
+  {
+    "slug": "planaltina",
+    "name": "Planaltina",
+    "forumCity": "Planaltina",
+    "center": {
+      "latitude": -15.6182,
+      "longitude": -47.6556
+    }
+  },
+  {
+    "slug": "plano-piloto",
+    "name": "Plano Piloto",
+    "forumCity": "Plano Piloto",
+    "center": {
+      "latitude": -15.7939,
+      "longitude": -47.8828
+    }
+  },
+  {
+    "slug": "recanto-das-emas",
+    "name": "Recanto das Emas",
+    "forumCity": "Recanto das Emas",
+    "center": {
+      "latitude": -15.9025,
+      "longitude": -48.0608
+    }
+  },
+  {
+    "slug": "riacho-fundo",
+    "name": "Riacho Fundo",
+    "forumCity": "Riacho Fundo",
+    "center": {
+      "latitude": -15.8833,
+      "longitude": -48.0175
+    }
+  },
+  {
+    "slug": "riacho-fundo-ii",
+    "name": "Riacho Fundo II",
+    "forumCity": "Riacho Fundo II",
+    "center": {
+      "latitude": -15.9071,
+      "longitude": -48.0488
+    }
+  },
+  {
+    "slug": "samambaia",
+    "name": "Samambaia",
+    "forumCity": "Samambaia",
+    "center": {
+      "latitude": -15.877,
+      "longitude": -48.0881
+    }
+  },
+  {
+    "slug": "santa-maria",
+    "name": "Santa Maria",
+    "forumCity": "Santa Maria",
+    "center": {
+      "latitude": -16.0171,
+      "longitude": -48.0131
+    }
+  },
+  {
+    "slug": "sao-sebastiao",
+    "name": "São Sebastião",
+    "forumCity": "São Sebastião",
+    "center": {
+      "latitude": -15.9034,
+      "longitude": -47.7718
+    }
+  },
+  {
+    "slug": "scia-estrutural",
+    "name": "SCIA/Estrutural",
+    "forumCity": "SCIA/Estrutural",
+    "center": {
+      "latitude": -15.7821,
+      "longitude": -47.9969
+    }
+  },
+  {
+    "slug": "sia",
+    "name": "SIA",
+    "forumCity": "SIA",
+    "center": {
+      "latitude": -15.8062,
+      "longitude": -47.9592
+    }
+  },
+  {
+    "slug": "sobradinho",
+    "name": "Sobradinho",
+    "forumCity": "Sobradinho",
+    "center": {
+      "latitude": -15.6501,
+      "longitude": -47.7848
+    }
+  },
+  {
+    "slug": "sobradinho-ii",
+    "name": "Sobradinho II",
+    "forumCity": "Sobradinho II",
+    "center": {
+      "latitude": -15.6437,
+      "longitude": -47.826
+    }
+  },
+  {
+    "slug": "sol-nascente-por-do-sol",
+    "name": "Sol Nascente/Pôr do Sol",
+    "forumCity": "Sol Nascente/Pôr do Sol",
+    "center": {
+      "latitude": -15.8276,
+      "longitude": -48.1371
+    }
+  },
+  {
+    "slug": "sudoeste-octogonal",
+    "name": "Sudoeste/Octogonal",
+    "forumCity": "Sudoeste/Octogonal",
+    "center": {
+      "latitude": -15.8002,
+      "longitude": -47.9244
+    }
+  },
+  {
+    "slug": "taguatinga",
+    "name": "Taguatinga",
+    "forumCity": "Taguatinga",
+    "center": {
+      "latitude": -15.8335,
+      "longitude": -48.0566
+    }
+  },
+  {
+    "slug": "varjao",
+    "name": "Varjão",
+    "forumCity": "Varjão",
+    "center": {
+      "latitude": -15.7108,
+      "longitude": -47.8763
+    }
+  },
+  {
+    "slug": "vicente-pires",
+    "name": "Vicente Pires",
+    "forumCity": "Vicente Pires",
+    "center": {
+      "latitude": -15.8136,
+      "longitude": -48.0156
+    }
+  }
+]
