@@ -17,6 +17,7 @@ import { useAuth } from '@/domains/auth';
 import { BrandColors } from '@/shared/constants/colors';
 
 import { useAvatarPicker } from '../hooks/use-avatar-picker';
+import { useNotifications } from '../hooks/use-notifications';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
@@ -25,6 +26,7 @@ interface MenuItem {
   label: string;
   tone?: 'default' | 'danger';
   href?: Href;
+  badge?: number;
 }
 
 const chatItems: MenuItem[] = [
@@ -32,7 +34,7 @@ const chatItems: MenuItem[] = [
 ];
 
 const preferenceItems: MenuItem[] = [
-  { icon: 'notifications-outline', label: 'Notificações' },
+  { icon: 'notifications-outline', label: 'Notificações', href: '/notifications' },
   { icon: 'search-outline', label: 'Preferências de busca' },
 ];
 
@@ -103,6 +105,13 @@ function MenuSection({
             <Text style={[styles.menuLabel, item.tone === 'danger' && styles.dangerText]}>
               {item.label}
             </Text>
+            {item.badge ? (
+              <View
+                accessibilityLabel={`${item.badge} não lidas`}
+                style={styles.badge}>
+                <Text style={styles.badgeText}>{item.badge > 99 ? '99+' : item.badge}</Text>
+              </View>
+            ) : null}
             <Ionicons color="#C8C8C8" name="chevron-forward" size={18} />
           </Pressable>
         ))}
@@ -115,6 +124,7 @@ export function ProfileScreen() {
   const { top } = useSafeAreaInsets();
   const { logout, user } = useAuth();
   const { errorMessage, isUploading, pickAvatar } = useAvatarPicker();
+  const { unreadCount } = useNotifications();
 
   const fullName = user?.fullName ?? 'Usuário';
   const handle = user?.email ? `@${user.email.split('@')[0]}` : '';
@@ -194,7 +204,12 @@ export function ProfileScreen() {
           </Pressable>
 
           <MenuSection items={chatItems} label="Conversas" />
-          <MenuSection items={preferenceItems} label="Preferências" />
+          <MenuSection
+            items={preferenceItems.map((item) =>
+              item.href === '/notifications' ? { ...item, badge: unreadCount } : item
+            )}
+            label="Preferências"
+          />
           <MenuSection items={accountItems} label="Conta" onLogout={handleLogout} />
         </View>
       </ScrollView>
@@ -418,5 +433,20 @@ const styles = StyleSheet.create({
   },
   dangerText: {
     color: '#D91D1D',
+  },
+  badge: {
+    minWidth: 20,
+    height: 20,
+    marginRight: 6,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: BrandColors.secondary,
+  },
+  badgeText: {
+    color: BrandColors.white,
+    fontSize: 11,
+    fontWeight: '700',
   },
 });
