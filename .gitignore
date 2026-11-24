@@ -50,3 +50,6 @@ example
 
 # Bun project: npm lockfiles at the root are accidental (functions/ keeps its own)
 /package-lock.json
+
+# Firebase admin service account keys (never commit)
+*-firebase-adminsdk-*.json

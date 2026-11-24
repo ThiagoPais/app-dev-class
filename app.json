@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "dev-app",
-    "slug": "dev-app",
+    "slug": "arthur",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -15,7 +15,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.devapp"
+      "package": "com.anonymous.devapp",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",
@@ -26,6 +27,7 @@
       "expo-font",
       "expo-image",
       "expo-web-browser",
+      "expo-notifications",
       [
         "expo-image-picker",
         {
@@ -50,7 +52,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "320f5eba-f88a-4660-a883-f910d9a48eff"
+        "projectId": "fc12491c-8573-4654-b7d5-df3e1b31e73e"
       }
     }
   }

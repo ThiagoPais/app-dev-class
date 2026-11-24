@@ -2,6 +2,7 @@ const { initializeApp } = require('firebase-admin/app');
 const { getAuth } = require('firebase-admin/auth');
 const { FieldValue, getFirestore, Timestamp } = require('firebase-admin/firestore');
 const { defineString } = require('firebase-functions/params');
+const { onDocumentCreated } = require('firebase-functions/v2/firestore');
 const { HttpsError, onCall } = require('firebase-functions/v2/https');
 
 initializeApp();
@@ -153,3 +154,33 @@ exports.castForumVote = onCall(async (request) => {
   });
   return { voted: true };
 });
+
+// Sends an Expo push to every other chat member when a message is created.
+exports.notifyNewChatMessage = onDocumentCreated(
+  { document: 'chats/{chatId}/messages/{messageId}', database: 'app-db' },
+  async (event) => {
+    const msg = event.data?.data();
+    if (!msg || msg.type !== 'text') return;
+
+    const chat = (await db().doc(`chats/${event.params.chatId}`).get()).data();
+    const recipients = (chat?.user_ids ?? []).filter((id) => id !== msg.author_id);
+    const users = await Promise.all(recipients.map((id) => db().doc(`users/${id}`).get()));
+    const messages = users.flatMap((user) =>
+      (user.get('expo_push_tokens') ?? []).map((to) => ({
+        to,
+        sound: 'default',
+        title: msg.author_snapshot?.full_name || 'Nova mensagem',
+        body: msg.message,
+        data: { userId: msg.author_id },
+      }))
+    );
+    if (!messages.length) return;
+
+    const res = await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify(messages),
+    });
+    if (!res.ok) console.error('[push] send failed', res.status, await res.text());
+  }
+);
