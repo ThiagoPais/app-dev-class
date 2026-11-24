@@ -157,7 +157,7 @@ exports.castForumVote = onCall(async (request) => {
 
 // Sends an Expo push to every other chat member when a message is created.
 exports.notifyNewChatMessage = onDocumentCreated(
-  { document: 'chats/{chatId}/messages/{messageId}', database: 'app-db' },
+  { document: 'chats/{chatId}/chat_messages/{messageId}', database: 'app-db' },
   async (event) => {
     const msg = event.data?.data();
     if (!msg || msg.type !== 'text') return;
